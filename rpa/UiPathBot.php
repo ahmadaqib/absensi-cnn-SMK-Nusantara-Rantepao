@@ -53,6 +53,15 @@ class UiPathBot {
         $stmt3 = $this->db->query("SELECT COUNT(*) FROM laporan_tersedia");
         $stat['total_laporan'] = (int) $stmt3->fetchColumn();
 
+        if (class_exists('TelegramBot')) {
+            $telegram = new TelegramBot();
+            $stat['telegram_aktif'] = $telegram->aktif();
+            $stat['telegram_status'] = $telegram->statusKonfigurasi();
+        } else {
+            $stat['telegram_aktif'] = false;
+            $stat['telegram_status'] = 'TelegramBot belum dimuat.';
+        }
+
         return $stat;
     }
 

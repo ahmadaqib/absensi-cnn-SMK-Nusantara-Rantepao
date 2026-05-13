@@ -12,6 +12,14 @@
         </form>
     </div>
 
+    <div class="<?= !empty($statistik['telegram_aktif']) ? 'bg-green-50 border-green-200 text-green-800' : 'bg-amber-50 border-amber-200 text-amber-800' ?> border rounded-lg px-4 py-3">
+        <p class="text-sm font-semibold">Telegram Bot</p>
+        <p class="text-xs mt-1"><?= htmlspecialchars($statistik['telegram_status'] ?? 'Status Telegram tidak tersedia.') ?></p>
+        <?php if (empty($statistik['telegram_aktif'])): ?>
+            <p class="text-xs mt-1">Isi <code class="font-mono">TELEGRAM_BOT_TOKEN</code> dan <code class="font-mono">TELEGRAM_CHAT_ID</code> di environment atau <code class="font-mono">config/app.php</code>.</p>
+        <?php endif; ?>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white border border-slate-200 rounded-lg p-4">
             <p class="text-xs font-medium text-slate-500">Diproses Hari Ini</p>

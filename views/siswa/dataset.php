@@ -1,6 +1,8 @@
 <?php
-$targetFoto = 10;
-$sudahCukup = $jumlahFoto >= $targetFoto;
+$targetFoto  = 10;
+$minimalFoto = 5;
+$sudahCukup  = $jumlahFoto >= $targetFoto;
+$bisaTraining = $jumlahFoto >= $minimalFoto;
 ?>
 
 <div class="max-w-3xl">
@@ -19,10 +21,12 @@ $sudahCukup = $jumlahFoto >= $targetFoto;
             <p class="text-sm text-slate-500">NIS: <?= htmlspecialchars($siswa['nis']) ?> · <?= htmlspecialchars($siswa['nama_kelas']) ?></p>
         </div>
         <div class="ml-auto text-right">
-            <p class="text-2xl font-bold <?= $sudahCukup ? 'text-[#15803D]' : 'text-[#1E40AF]' ?>">
+            <p class="text-2xl font-bold <?= $sudahCukup ? 'text-[#15803D]' : ($bisaTraining ? 'text-[#1E40AF]' : 'text-amber-500') ?>">
                 <span id="jumlahFoto"><?= $jumlahFoto ?></span>/<?= $targetFoto ?>
             </p>
-            <p class="text-xs text-slate-400">foto tersimpan</p>
+            <p class="text-xs <?= $sudahCukup ? 'text-green-600 font-medium' : ($bisaTraining ? 'text-blue-600' : 'text-slate-400') ?>">
+                <?= $sudahCukup ? '✓ Lengkap' : ($bisaTraining ? 'Cukup (min. '.$minimalFoto.')' : 'foto tersimpan') ?>
+            </p>
         </div>
     </div>
 
@@ -74,11 +78,21 @@ $sudahCukup = $jumlahFoto >= $targetFoto;
             <div class="mt-3">
                 <div class="w-full bg-slate-100 rounded-full h-2">
                     <div id="progressBar"
-                         class="bg-[#1E40AF] h-2 rounded-full transition-all"
+                         class="<?= $sudahCukup ? 'bg-[#15803D]' : ($bisaTraining ? 'bg-[#1E40AF]' : 'bg-amber-400') ?> h-2 rounded-full transition-all"
                          style="width: <?= ($jumlahFoto / $targetFoto) * 100 ?>%"></div>
+                    <!-- Penanda minimum 5 foto -->
+                    <div class="relative h-0">
+                        <div class="absolute top-[-10px] text-[9px] text-slate-400" style="left: 50%">|</div>
+                    </div>
                 </div>
                 <p id="pesanStatus" class="text-xs text-slate-500 mt-1 text-center">
-                    <?= $sudahCukup ? 'Dataset lengkap. Siap untuk training.' : "Butuh $targetFoto foto untuk training." ?>
+                    <?php if ($sudahCukup): ?>
+                        Dataset lengkap. Siap untuk training.
+                    <?php elseif ($bisaTraining): ?>
+                        Sudah cukup untuk training. Tambah hingga <?= $targetFoto ?> untuk hasil optimal.
+                    <?php else: ?>
+                        Butuh minimal <?= $minimalFoto ?> foto untuk training (target <?= $targetFoto ?>).
+                    <?php endif; ?>
                 </p>
             </div>
         </div>
@@ -110,8 +124,14 @@ $sudahCukup = $jumlahFoto >= $targetFoto;
 
             <?php if ($sudahCukup): ?>
             <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 font-medium">
-                Dataset lengkap. Lanjut ke
+                ✓ Dataset lengkap. Lanjut ke
                 <a href="<?= APP_URL ?>/training" class="underline">Training CNN</a>.
+            </div>
+            <?php elseif ($bisaTraining): ?>
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+                Dataset cukup (<?= $jumlahFoto ?>/<?= $targetFoto ?>). Bisa
+                <a href="<?= APP_URL ?>/training" class="underline font-medium">Training CNN</a>
+                sekarang, atau tambah foto untuk hasil lebih optimal.
             </div>
             <?php endif; ?>
         </div>
@@ -159,8 +179,9 @@ $sudahCukup = $jumlahFoto >= $targetFoto;
 </div>
 
 <script>
-const SISWA_ID    = <?= $siswa['id'] ?>;
-const TARGET_FOTO = <?= $targetFoto ?>;
+const SISWA_ID     = <?= $siswa['id'] ?>;
+const TARGET_FOTO  = <?= $targetFoto ?>;
+const MINIMAL_FOTO = <?= $minimalFoto ?>;
 let jumlahTersimpan = <?= $jumlahFoto ?>;
 let sedangSimpan  = false;
 
@@ -219,6 +240,7 @@ btnAmbil.addEventListener('click', () => {
                     statusKam.textContent = 'Dataset lengkap!';
                     btnAmbil.textContent  = 'Selesai';
                     pesanSt.textContent   = 'Dataset lengkap. Siap untuk training.';
+                    progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#15803D]');
                     pesanSt.classList.add('text-green-700', 'font-semibold');
                 } else {
                     btnAmbil.textContent = 'Ambil Foto';
@@ -242,6 +264,13 @@ btnAmbil.addEventListener('click', () => {
 function updateProgress() {
     const pct = Math.min((jumlahTersimpan / TARGET_FOTO) * 100, 100);
     progressBar.style.width = pct + '%';
+    // Update warna bar berdasarkan threshold
+    if (jumlahTersimpan >= TARGET_FOTO) {
+        progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#15803D]');
+    } else if (jumlahTersimpan >= MINIMAL_FOTO) {
+        progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#1E40AF]');
+        pesanSt.textContent = `Sudah cukup untuk training. Tambah hingga ${TARGET_FOTO} untuk hasil optimal.`;
+    }
 }
 
 function updateSlot(nomor, base64) {

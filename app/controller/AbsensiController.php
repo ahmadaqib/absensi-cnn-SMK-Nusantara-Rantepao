@@ -156,24 +156,47 @@ class AbsensiController {
             return;
         }
 
-        // ── Masukkan ke antrian RPA ──
-        $this->absensiModel->simpanAntrian([
-            'siswa_id'        => $siswa['id'],
-            'jadwal_id'       => $jadwalId,
-            'confidence'      => $hasilCnn['confidence'],
-            'latitude'        => $latSiswa,
-            'longitude'       => $lonSiswa,
-            'jarak_dari_kelas'=> isset($jarak) ? round($jarak, 2) : null,
+        $jam = date('H:i:s');
+        $statusAbsensi = $this->tentukanStatus($jadwalId, $jam);
+
+        // Simpan final sekarang agar rekap dan laporan langsung terisi.
+        $tersimpan = $this->absensiModel->simpan([
+            'siswa_id'           => $siswa['id'],
+            'jadwal_id'          => $jadwalId,
+            'tanggal'            => $tanggal,
+            'jam'                => $jam,
+            'status'             => $statusAbsensi,
+            'confidence'         => $hasilCnn['confidence'],
+            'latitude_absensi'   => $latSiswa,
+            'longitude_absensi'  => $lonSiswa,
+            'jarak_dari_kelas'   => isset($jarak) ? round($jarak, 2) : null,
         ]);
 
-        // Estimasi status hadir/terlambat untuk ditampilkan ke browser
-        $statusAbsensi = $this->tentukanStatus($jadwalId, date('H:i:s'));
+        if (!$tersimpan) {
+            Response::json(['status' => 'error', 'pesan' => 'Absensi gagal disimpan ke rekap.']);
+            return;
+        }
+
+        // Simpan jejak RPA sebagai DONE supaya bot/notifikasi tetap punya audit trail.
+        try {
+            $this->absensiModel->simpanAntrian([
+                'siswa_id'        => $siswa['id'],
+                'jadwal_id'       => $jadwalId,
+                'confidence'      => $hasilCnn['confidence'],
+                'latitude'        => $latSiswa,
+                'longitude'       => $lonSiswa,
+                'jarak_dari_kelas'=> isset($jarak) ? round($jarak, 2) : null,
+                'status'          => 'DONE',
+            ]);
+        } catch (Throwable $e) {
+            // Rekap/laporan sudah aman karena tabel final berhasil disimpan.
+        }
 
         Response::json([
             'status'         => 'berhasil',
             'nama_siswa'     => $siswa['nama'],
             'nis'            => $nis,
-            'jam'            => substr(date('H:i:s'), 0, 5),
+            'jam'            => substr($jam, 0, 5),
             'status_absensi' => $statusAbsensi,
             'confidence'     => $hasilCnn['confidence'],
             'jarak'          => isset($jarak) ? round($jarak) : null,

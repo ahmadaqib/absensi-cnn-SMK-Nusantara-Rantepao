@@ -46,21 +46,25 @@ def tulis_status(status: str, progres: int, pesan: str,
 
 
 def bangun_model(n_kelas: int) -> tf.keras.Model:
-    """Arsitektur CNN sesuai PRD §9 Modul 3."""
+    """Arsitektur CNN sesuai PRD §9 Modul 3 + BatchNorm untuk stabilisasi."""
     model = models.Sequential([
         layers.Input(shape=(*UKURAN_INPUT, 3)),
 
         layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+        layers.BatchNormalization(),
         layers.MaxPooling2D(2, 2),
 
         layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        layers.BatchNormalization(),
         layers.MaxPooling2D(2, 2),
 
         layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.BatchNormalization(),
         layers.MaxPooling2D(2, 2),
 
         layers.Flatten(),
         layers.Dense(256, activation='relu'),
+        layers.BatchNormalization(),
         layers.Dropout(0.5),
         layers.Dense(n_kelas, activation='softmax'),
     ], name='absensi_cnn')
@@ -129,10 +133,13 @@ def main() -> None:
         metrics=['accuracy'],
     )
 
-    n_epoch = 10
+    n_epoch = 30
     cb_progres = ProgressCallback(n_epoch)
     cb_stop    = callbacks.EarlyStopping(
-        monitor='val_accuracy', patience=3, restore_best_weights=True
+        monitor='val_accuracy', patience=7, restore_best_weights=True
+    )
+    cb_lr = callbacks.ReduceLROnPlateau(
+        monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6, verbose=0
     )
 
     # Training
@@ -140,9 +147,9 @@ def main() -> None:
     history = model.fit(
         X_train, y_train,
         epochs=n_epoch,
-        batch_size=16,
+        batch_size=32,
         validation_data=(X_val, y_val),
-        callbacks=[cb_progres, cb_stop],
+        callbacks=[cb_progres, cb_stop, cb_lr],
         verbose=0,
     )
 

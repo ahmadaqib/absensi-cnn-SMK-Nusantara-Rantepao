@@ -8,14 +8,20 @@ class Absensi {
         $this->db = koneksiDB();
     }
 
-    // Simpan langsung ke tabel absensi (digunakan oleh UiPath Bot / RPA)
+    // Simpan langsung ke tabel absensi final.
     public function simpan(array $data): bool {
         $stmt = $this->db->prepare(
             "INSERT INTO absensi
                 (siswa_id, jadwal_id, tanggal, jam, status, confidence,
                  latitude_absensi, longitude_absensi, jarak_dari_kelas)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE jam=VALUES(jam), status=VALUES(status)"
+             ON DUPLICATE KEY UPDATE
+                jam=VALUES(jam),
+                status=VALUES(status),
+                confidence=VALUES(confidence),
+                latitude_absensi=VALUES(latitude_absensi),
+                longitude_absensi=VALUES(longitude_absensi),
+                jarak_dari_kelas=VALUES(jarak_dari_kelas)"
         );
         return $stmt->execute([
             $data['siswa_id'],
@@ -30,13 +36,18 @@ class Absensi {
         ]);
     }
 
-    // Tulis ke antrian RPA (dipanggil AbsensiController saat absensi real-time)
+    // Tulis jejak ke antrian RPA. Default PENDING, bisa DONE jika sudah disimpan final.
     public function simpanAntrian(array $data): bool {
+        $status = $data['status'] ?? 'PENDING';
+        if (!in_array($status, ['PENDING', 'PROCESSING', 'DONE', 'GAGAL'], true)) {
+            $status = 'PENDING';
+        }
+
         $stmt = $this->db->prepare(
             "INSERT INTO presensi_antrian
                 (siswa_id, jadwal_id, timestamp_masuk, confidence,
-                 latitude, longitude, jarak_dari_kelas, status)
-             VALUES (?, ?, NOW(), ?, ?, ?, ?, 'PENDING')"
+                 latitude, longitude, jarak_dari_kelas, status, diproses_pada)
+             VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?)"
         );
         return $stmt->execute([
             $data['siswa_id'],
@@ -45,6 +56,8 @@ class Absensi {
             $data['latitude']          ?? null,
             $data['longitude']         ?? null,
             $data['jarak_dari_kelas']  ?? null,
+            $status,
+            $status === 'DONE' ? date('Y-m-d H:i:s') : null,
         ]);
     }
 
@@ -104,59 +117,120 @@ class Absensi {
     // Absensi hari ini untuk tabel dashboard + live polling
     public function absensiHariIni(int $limit = 20): array {
         $tanggal = date('Y-m-d');
-        $stmt = $this->db->prepare(
-            "SELECT a.*, s.nama AS nama_siswa, s.nis, k.nama AS nama_kelas,
-                    j.mata_pelajaran
-             FROM absensi a
-             JOIN siswa s  ON a.siswa_id  = s.id
-             JOIN kelas k  ON s.kelas_id  = k.id
-             JOIN jadwal j ON a.jadwal_id = j.id
-             WHERE a.tanggal = ?
-             ORDER BY a.jam DESC
-             LIMIT ?"
-        );
-        $stmt->execute([$tanggal, $limit]);
-        return $stmt->fetchAll();
+        return $this->ambilDenganFilter([
+            'tanggal_dari'   => $tanggal,
+            'tanggal_sampai' => $tanggal,
+            'limit'          => $limit,
+        ]);
     }
 
     // Untuk laporan — filter fleksibel
     public function ambilDenganFilter(array $filter): array {
-        $kondisi = ["1=1"];
+        $kondisi = ['1=1'];
         $params  = [];
 
         if (!empty($filter['kelas_id'])) {
-            $kondisi[] = "s.kelas_id = ?";
+            $kondisi[] = "x.kelas_id = ?";
             $params[]  = $filter['kelas_id'];
         }
         if (!empty($filter['jadwal_id'])) {
-            $kondisi[] = "a.jadwal_id = ?";
+            $kondisi[] = "x.jadwal_id = ?";
             $params[]  = $filter['jadwal_id'];
         }
         if (!empty($filter['tanggal_dari'])) {
-            $kondisi[] = "a.tanggal >= ?";
+            $kondisi[] = "x.tanggal >= ?";
             $params[]  = $filter['tanggal_dari'];
         }
         if (!empty($filter['tanggal_sampai'])) {
-            $kondisi[] = "a.tanggal <= ?";
+            $kondisi[] = "x.tanggal <= ?";
             $params[]  = $filter['tanggal_sampai'];
         }
         if (!empty($filter['status'])) {
-            $kondisi[] = "a.status = ?";
+            $kondisi[] = "x.status = ?";
             $params[]  = $filter['status'];
         }
 
-        $sql = "SELECT a.*, s.nama AS nama_siswa, s.nis,
-                       k.nama AS nama_kelas, j.mata_pelajaran, j.hari
-                FROM absensi a
-                JOIN siswa s  ON a.siswa_id  = s.id
-                JOIN kelas k  ON s.kelas_id  = k.id
-                JOIN jadwal j ON a.jadwal_id = j.id
+        $limit = max(1, min((int) ($filter['limit'] ?? 500), 500));
+        $sql = "SELECT x.*
+                FROM (" . $this->sqlGabunganAbsensi() . ") x
                 WHERE " . implode(' AND ', $kondisi) . "
-                ORDER BY a.tanggal DESC, a.jam DESC
-                LIMIT 500";
+                ORDER BY x.tanggal DESC, x.jam DESC
+                LIMIT ?";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        foreach ($params as $i => $value) {
+            $stmt->bindValue($i + 1, $value);
+        }
+        $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    private function sqlGabunganAbsensi(): string {
+        $toleransiDetik = (int) TOLERANSI_TERLAMBAT * 60;
+
+        return "
+            SELECT
+                a.id,
+                a.siswa_id,
+                a.jadwal_id,
+                s.kelas_id,
+                a.tanggal,
+                a.jam,
+                a.status,
+                a.confidence,
+                a.latitude_absensi,
+                a.longitude_absensi,
+                a.jarak_dari_kelas,
+                s.nama AS nama_siswa,
+                s.nis,
+                k.nama AS nama_kelas,
+                j.mata_pelajaran,
+                j.hari,
+                'FINAL' AS status_antrian,
+                NULL AS pesan_error,
+                'absensi' AS sumber
+            FROM absensi a
+            JOIN siswa s  ON a.siswa_id  = s.id
+            JOIN kelas k  ON s.kelas_id  = k.id
+            JOIN jadwal j ON a.jadwal_id = j.id
+
+            UNION ALL
+
+            SELECT
+                q.id,
+                q.siswa_id,
+                q.jadwal_id,
+                s.kelas_id,
+                DATE(q.timestamp_masuk) AS tanggal,
+                TIME(q.timestamp_masuk) AS jam,
+                CASE
+                    WHEN TIME(q.timestamp_masuk) > ADDTIME(j.jam_mulai, SEC_TO_TIME($toleransiDetik))
+                    THEN 'terlambat'
+                    ELSE 'hadir'
+                END AS status,
+                q.confidence,
+                q.latitude AS latitude_absensi,
+                q.longitude AS longitude_absensi,
+                q.jarak_dari_kelas,
+                s.nama AS nama_siswa,
+                s.nis,
+                k.nama AS nama_kelas,
+                j.mata_pelajaran,
+                j.hari,
+                q.status AS status_antrian,
+                q.pesan_error,
+                'antrian' AS sumber
+            FROM presensi_antrian q
+            JOIN siswa s  ON q.siswa_id  = s.id
+            JOIN kelas k  ON s.kelas_id  = k.id
+            JOIN jadwal j ON q.jadwal_id = j.id
+            LEFT JOIN absensi a2
+                ON a2.siswa_id = q.siswa_id
+               AND a2.jadwal_id = q.jadwal_id
+               AND a2.tanggal = DATE(q.timestamp_masuk)
+            WHERE a2.id IS NULL
+              AND q.status IN ('PENDING', 'PROCESSING', 'DONE')
+        ";
     }
 }

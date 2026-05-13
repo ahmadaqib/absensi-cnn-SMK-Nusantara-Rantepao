@@ -8,10 +8,12 @@ class KirimNotifikasi {
 
     private PDO       $db;
     private UiPathBot $bot;
+    private TelegramBot $telegram;
 
     public function __construct(PDO $db, UiPathBot $bot) {
-        $this->db  = $db;
-        $this->bot = $bot;
+        $this->db       = $db;
+        $this->bot      = $bot;
+        $this->telegram = new TelegramBot();
     }
 
     public function cekSesiSelesai(): void {
@@ -41,6 +43,7 @@ class KirimNotifikasi {
 
     private function prosesJadwal(array $jadwal, string $tanggal): void {
         $this->db->beginTransaction();
+        $pesanTelegram = null;
 
         try {
             $siswaBelumAbsen = $this->ambilSiswaBelumAbsen((int) $jadwal['id'], (int) $jadwal['kelas_id'], $tanggal);
@@ -63,6 +66,8 @@ class KirimNotifikasi {
                 $this->db->prepare(
                     "INSERT INTO notifikasi (penerima_id, pesan, tipe) VALUES (?, ?, 'ABSEN')"
                 )->execute([(int) $jadwal['guru_id'], $pesan]);
+
+                $pesanTelegram = $this->formatPesanTelegram($jadwal, $tanggal, $siswaBelumAbsen);
             }
 
             $this->db->prepare(
@@ -71,6 +76,9 @@ class KirimNotifikasi {
 
             $this->db->commit();
             $this->bot->log("KirimNotifikasi: jadwal {$jadwal['id']} ditutup, " . count($siswaBelumAbsen) . " siswa tidak hadir.");
+            if ($pesanTelegram !== null) {
+                $this->kirimTelegram($pesanTelegram, (int) $jadwal['id']);
+            }
         } catch (Throwable $e) {
             $this->db->rollBack();
             $this->bot->log("KirimNotifikasi gagal jadwal {$jadwal['id']}: " . $e->getMessage());
@@ -97,5 +105,35 @@ class KirimNotifikasi {
             "INSERT IGNORE INTO absensi (siswa_id, jadwal_id, tanggal, jam, status)
              VALUES (?, ?, ?, ?, 'tidak_hadir')"
         )->execute([$siswaId, $jadwalId, $tanggal, $jamSelesai]);
+    }
+
+    private function formatPesanTelegram(array $jadwal, string $tanggal, array $siswaBelumAbsen): string {
+        $daftarNama = array_map(
+            fn(array $siswa) => '- ' . TelegramBot::escape($siswa['nama']),
+            array_slice($siswaBelumAbsen, 0, 20)
+        );
+
+        if (count($siswaBelumAbsen) > 20) {
+            $daftarNama[] = '- dan ' . (count($siswaBelumAbsen) - 20) . ' siswa lainnya';
+        }
+
+        return "<b>Notifikasi Absensi</b>\n"
+            . "Tanggal: " . TelegramBot::escape(date('d/m/Y', strtotime($tanggal))) . "\n"
+            . "Guru: " . TelegramBot::escape($jadwal['nama_guru']) . "\n"
+            . "Kelas: " . TelegramBot::escape($jadwal['nama_kelas']) . "\n"
+            . "Mapel: " . TelegramBot::escape($jadwal['mata_pelajaran']) . "\n"
+            . "Jam: " . TelegramBot::escape(substr($jadwal['jam_mulai'], 0, 5) . '-' . substr($jadwal['jam_selesai'], 0, 5)) . "\n\n"
+            . "<b>" . count($siswaBelumAbsen) . " siswa tidak hadir:</b>\n"
+            . implode("\n", $daftarNama);
+    }
+
+    private function kirimTelegram(string $pesan, int $jadwalId): void {
+        $hasil = $this->telegram->kirimPesan($pesan);
+        if ($hasil['ok']) {
+            $this->bot->log("Telegram: notifikasi jadwal $jadwalId terkirim.");
+            return;
+        }
+
+        $this->bot->log("Telegram gagal jadwal $jadwalId: " . ($hasil['error'] ?? 'error tidak diketahui'));
     }
 }

@@ -155,7 +155,7 @@ async function captureFrame() {
     canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    const base64 = canvas.toDataURL('image/jpeg', 0.80);
+    const base64 = canvas.toDataURL('image/jpeg', 0.85);
 
     const form = new FormData();
     form.append('gambar',    base64);

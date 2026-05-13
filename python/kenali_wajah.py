@@ -75,10 +75,15 @@ def kenali(data_base64: str) -> dict:
     crop  = crop_dan_resize(gambar, x, y, w, h)
     norm  = normalisasi(crop)
 
-    # Inferensi
+    # Inferensi dengan Test-Time Augmentation (TTA)
+    # Rata-ratakan prediksi dari gambar asli dan flip horizontal
+    # untuk confidence yang lebih stabil dan akurat
     try:
-        input_arr = np.expand_dims(norm, axis=0)   # (1, 224, 224, 3)
-        prediksi  = _model.predict(input_arr, verbose=0)[0]
+        input_asli = np.expand_dims(norm, axis=0)            # (1, 224, 224, 3)
+        input_flip = np.expand_dims(norm[:, ::-1, :], axis=0) # flip horizontal
+        pred_asli  = _model.predict(input_asli, verbose=0)[0]
+        pred_flip  = _model.predict(input_flip, verbose=0)[0]
+        prediksi   = (pred_asli + pred_flip) / 2.0
     except Exception as e:
         return {'status': 'error', 'pesan': f'Inferensi CNN gagal: {e}'}
 

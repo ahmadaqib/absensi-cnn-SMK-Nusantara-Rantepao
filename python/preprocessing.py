@@ -106,23 +106,84 @@ def muat_dataset(dir_dataset: str) -> tuple[np.ndarray, np.ndarray, dict]:
     return np.array(X_list), np.array(y_list), label_map
 
 
+def _rotasi(gambar: np.ndarray, sudut: float) -> np.ndarray:
+    """Rotasi gambar sebesar `sudut` derajat, lalu crop kembali ke ukuran asli."""
+    h, w = gambar.shape[:2]
+    M = cv2.getRotationMatrix2D((w / 2, h / 2), sudut, 1.0)
+    hasil = cv2.warpAffine(gambar, M, (w, h), borderMode=cv2.BORDER_REFLECT_101)
+    return hasil.astype(np.float32)
+
+
+def _zoom(gambar: np.ndarray, faktor: float) -> np.ndarray:
+    """Zoom in/out gambar. faktor > 1 = zoom in, < 1 = zoom out."""
+    h, w = gambar.shape[:2]
+    new_h, new_w = int(h * faktor), int(w * faktor)
+    resized = cv2.resize(gambar, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+    if faktor >= 1.0:
+        # Crop tengah
+        y0 = (new_h - h) // 2
+        x0 = (new_w - w) // 2
+        return resized[y0:y0+h, x0:x0+w].astype(np.float32)
+    else:
+        # Pad dengan reflect
+        pad_y = (h - new_h) // 2
+        pad_x = (w - new_w) // 2
+        padded = cv2.copyMakeBorder(resized, pad_y, h - new_h - pad_y,
+                                    pad_x, w - new_w - pad_x,
+                                    cv2.BORDER_REFLECT_101)
+        return padded.astype(np.float32)
+
+
+def _noise_gaussian(gambar: np.ndarray, sigma: float = 0.02) -> np.ndarray:
+    """Tambah noise Gaussian ringan."""
+    noise = np.random.normal(0, sigma, gambar.shape).astype(np.float32)
+    return np.clip(gambar + noise, 0, 1).astype(np.float32)
+
+
+def _blur_ringan(gambar: np.ndarray, ksize: int = 3) -> np.ndarray:
+    """Gaussian blur ringan untuk simulasi kamera kurang fokus."""
+    return cv2.GaussianBlur(gambar, (ksize, ksize), 0).astype(np.float32)
+
+
 def augmentasi(gambar: np.ndarray) -> list[np.ndarray]:
     """
-    Augmentasi sederhana: flip horizontal + variasi kecerahan.
+    Augmentasi diperkaya: flip, rotasi, zoom, noise, blur, kecerahan.
+    Menghasilkan ~10 variasi per gambar untuk meningkatkan confidence CNN.
     Kembalikan list gambar tambahan (bukan termasuk gambar asli).
     """
     hasil = []
 
-    # Flip horizontal
-    flip = gambar[:, ::-1, :]
+    # 1. Flip horizontal
+    flip = gambar[:, ::-1, :].copy()
     hasil.append(flip)
 
-    # Kecerahan +10%
-    cerah = np.clip(gambar * 1.10, 0, 1).astype(np.float32)
+    # 2. Rotasi +10°
+    hasil.append(_rotasi(gambar, 10))
+
+    # 3. Rotasi -10°
+    hasil.append(_rotasi(gambar, -10))
+
+    # 4. Rotasi +15° (lebih ekstrem)
+    hasil.append(_rotasi(gambar, 15))
+
+    # 5. Zoom in 1.1x
+    hasil.append(_zoom(gambar, 1.10))
+
+    # 6. Zoom out 0.9x
+    hasil.append(_zoom(gambar, 0.90))
+
+    # 7. Kecerahan +20%
+    cerah = np.clip(gambar * 1.20, 0, 1).astype(np.float32)
     hasil.append(cerah)
 
-    # Kecerahan -10%
-    redup = np.clip(gambar * 0.90, 0, 1).astype(np.float32)
+    # 8. Kecerahan -20%
+    redup = np.clip(gambar * 0.80, 0, 1).astype(np.float32)
     hasil.append(redup)
+
+    # 9. Gaussian noise ringan
+    hasil.append(_noise_gaussian(gambar, sigma=0.02))
+
+    # 10. Blur ringan + flip (simulasi kamera kurang fokus)
+    hasil.append(_blur_ringan(flip, ksize=3))
 
     return hasil

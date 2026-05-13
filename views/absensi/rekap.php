@@ -15,6 +15,18 @@ $labelStatus = [
     'terlambat'   => 'Terlambat',
     'tidak_hadir' => 'Tidak Hadir',
 ];
+$labelProses = [
+    'FINAL'      => 'Tersimpan',
+    'DONE'       => 'Tersimpan',
+    'PENDING'    => 'Menunggu RPA',
+    'PROCESSING' => 'Diproses RPA',
+];
+$badgeProses = [
+    'FINAL'      => 'bg-green-50 text-green-700 border border-green-200',
+    'DONE'       => 'bg-green-50 text-green-700 border border-green-200',
+    'PENDING'    => 'bg-amber-50 text-amber-700 border border-amber-200',
+    'PROCESSING' => 'bg-blue-50 text-blue-700 border border-blue-200',
+];
 ?>
 
 <!-- Filter -->
@@ -80,7 +92,7 @@ $labelStatus = [
             </a>
             <a href="<?= APP_URL ?>/laporan/excel?<?= http_build_query($filter) ?>"
                class="h-8 px-3 flex items-center text-xs font-medium text-green-700 border border-green-200 rounded hover:bg-green-50 transition-colors">
-                Export Excel
+                Export XLSX
             </a>
         </div>
     </div>
@@ -95,14 +107,16 @@ $labelStatus = [
                     <th class="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Mata Pelajaran</th>
                     <th class="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Jam</th>
                     <th class="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Status</th>
+                    <th class="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Proses</th>
                     <th class="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Confidence</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($dataAbsensi)): ?>
-                <tr><td colspan="7" class="text-center py-12 text-slate-400">Tidak ada data untuk filter ini.</td></tr>
+                <tr><td colspan="8" class="text-center py-12 text-slate-400">Tidak ada data untuk filter ini.</td></tr>
                 <?php else: ?>
                 <?php foreach ($dataAbsensi as $i => $a): ?>
+                <?php $proses = $a['status_antrian'] ?? 'FINAL'; ?>
                 <tr class="border-b border-slate-100 <?= $i % 2 !== 0 ? 'bg-slate-50/50' : '' ?> hover:bg-blue-50/40 transition-colors">
                     <td class="px-4 py-2.5 text-slate-600 text-xs font-mono">
                         <?= date('d/m/Y', strtotime($a['tanggal'])) ?>
@@ -117,6 +131,11 @@ $labelStatus = [
                     <td class="px-4 py-2.5">
                         <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium <?= $badgeKelas[$a['status']] ?? '' ?>">
                             <?= $labelStatus[$a['status']] ?? $a['status'] ?>
+                        </span>
+                    </td>
+                    <td class="px-4 py-2.5">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium <?= $badgeProses[$proses] ?? 'bg-slate-50 text-slate-600 border border-slate-200' ?>">
+                            <?= $labelProses[$proses] ?? $proses ?>
                         </span>
                     </td>
                     <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">

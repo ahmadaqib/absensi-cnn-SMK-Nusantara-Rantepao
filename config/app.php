@@ -28,6 +28,12 @@ define('TOLERANSI_TERLAMBAT', 15);
 // Geofencing GPS — radius maksimal siswa dari koordinat kelas (meter)
 define('RADIUS_MAKSIMAL', 50);
 
+// Telegram Bot untuk notifikasi RPA.
+// Isi lewat environment variable TELEGRAM_BOT_TOKEN dan TELEGRAM_CHAT_ID,
+// atau ganti string kosong di bawah saat instalasi lokal.
+define('TELEGRAM_BOT_TOKEN', getenv('TELEGRAM_BOT_TOKEN') ?: '');
+define('TELEGRAM_CHAT_ID', getenv('TELEGRAM_CHAT_ID') ?: '');
+
 // Upload
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5 MB
 define('UPLOAD_FOTO_DIR', BASE_PATH . '/public/gambar/foto-siswa/');

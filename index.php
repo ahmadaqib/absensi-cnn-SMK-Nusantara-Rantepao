@@ -4,7 +4,7 @@ require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/database.php';
 
 // Autoload helper dan model
-foreach (['Auth', 'Response', 'Validator'] as $helper) {
+foreach (['Auth', 'Response', 'Validator', 'XlsxWriter'] as $helper) {
     require_once __DIR__ . "/app/helper/$helper.php";
 }
 foreach (['Pengguna', 'Siswa', 'Kelas', 'Jadwal', 'Absensi', 'Notifikasi'] as $model) {

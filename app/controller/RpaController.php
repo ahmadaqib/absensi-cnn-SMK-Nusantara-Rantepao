@@ -7,6 +7,7 @@ class RpaController {
     public function __construct() {
         Auth::cekRole(['admin']);
         require_once BASE_PATH . '/rpa/ProsesAbsensi.php';
+        require_once BASE_PATH . '/rpa/TelegramBot.php';
         require_once BASE_PATH . '/rpa/KirimNotifikasi.php';
         require_once BASE_PATH . '/rpa/GenerateLaporan.php';
         require_once BASE_PATH . '/rpa/UiPathBot.php';

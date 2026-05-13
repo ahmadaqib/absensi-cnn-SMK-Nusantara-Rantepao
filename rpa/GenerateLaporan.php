@@ -36,7 +36,7 @@ class GenerateLaporan {
 
         $data = $this->ambilDataHarian($tanggal);
         $path = $format === 'excel'
-            ? $this->tulisCsv($tanggal, $data)
+            ? $this->tulisXlsx($tanggal, $data)
             : $this->tulisHtmlPdf($tanggal, $data);
 
         $this->db->prepare(
@@ -72,17 +72,26 @@ class GenerateLaporan {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function tulisCsv(string $tanggal, array $data): string {
-        $path = $this->dirLaporan . "/laporan-harian-$tanggal.csv";
-        $fh   = fopen($path, 'w');
-        fputcsv($fh, ['Tanggal', 'Jam', 'NIS', 'Nama', 'Kelas', 'Mata Pelajaran', 'Status', 'Confidence']);
-        foreach ($data as $row) {
-            fputcsv($fh, [
-                $row['tanggal'], $row['jam'], $row['nis'], $row['nama_siswa'],
-                $row['nama_kelas'], $row['mata_pelajaran'], $row['status'], $row['confidence'],
-            ]);
-        }
-        fclose($fh);
+    private function tulisXlsx(string $tanggal, array $data): string {
+        $path = $this->dirLaporan . "/laporan-harian-$tanggal.xlsx";
+        XlsxWriter::tulisFile(
+            $path,
+            'Laporan Absensi Harian',
+            'Tanggal ' . date('d/m/Y', strtotime($tanggal)),
+            $this->ringkasan($data),
+            ['Tanggal', 'Jam', 'NIS', 'Nama Siswa', 'Kelas', 'Mata Pelajaran', 'Status', 'Proses', 'Confidence'],
+            array_map(fn(array $row) => [
+                date('d/m/Y', strtotime($row['tanggal'])),
+                substr($row['jam'], 0, 5),
+                $row['nis'],
+                $row['nama_siswa'],
+                $row['nama_kelas'],
+                $row['mata_pelajaran'],
+                $this->labelStatus($row['status']),
+                'Tersimpan',
+                $row['confidence'] !== null ? number_format((float) $row['confidence'] * 100, 1) . '%' : '-',
+            ], $data)
+        );
         return $path;
     }
 
@@ -97,5 +106,23 @@ class GenerateLaporan {
         $html .= '</tbody></table></body></html>';
         file_put_contents($path, $html);
         return $path;
+    }
+
+    private function ringkasan(array $data): array {
+        $hasil = ['Total' => count($data), 'Hadir' => 0, 'Terlambat' => 0, 'Tidak Hadir' => 0];
+        foreach ($data as $row) {
+            if ($row['status'] === 'hadir') $hasil['Hadir']++;
+            if ($row['status'] === 'terlambat') $hasil['Terlambat']++;
+            if ($row['status'] === 'tidak_hadir') $hasil['Tidak Hadir']++;
+        }
+        return $hasil;
+    }
+
+    private function labelStatus(string $status): string {
+        return [
+            'hadir'       => 'Hadir',
+            'terlambat'   => 'Terlambat',
+            'tidak_hadir' => 'Tidak Hadir',
+        ][$status] ?? ucwords(str_replace('_', ' ', $status));
     }
 }

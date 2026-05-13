@@ -46,7 +46,7 @@ class ProsesAbsensi {
                 date('Y-m-d', strtotime($item['timestamp_masuk'])),
             ]);
             if ($stmt->fetchColumn() > 0) {
-                $this->ubahStatus($item['id'], 'GAGAL', 'Sudah absen di sesi ini.');
+                $this->ubahStatus($item['id'], 'DONE', 'Sudah tersimpan di tabel absensi final.');
                 return;
             }
 
