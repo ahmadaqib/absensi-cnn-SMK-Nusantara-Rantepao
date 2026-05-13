@@ -1,0 +1,12 @@
+CLAUDE.md
+PRD_Sistem_Absensi_CNN.md
+PRD_Sistem_Absensi_CNN_v2.md
+RESUME.md
+__pycache__/
+*.py[cod]
+.venv/
+python/model_absensi.h5
+python/label_map.json
+python/training_status.json
+python/dataset
+AGENTS.md
