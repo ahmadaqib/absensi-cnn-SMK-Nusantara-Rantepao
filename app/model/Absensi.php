@@ -61,6 +61,15 @@ class Absensi {
         ]);
     }
 
+    // Hapus entri PENDING di antrian untuk satu siswa (dipanggil saat reset dataset)
+    public function hapusAntrianPending(int $siswaId): int {
+        $stmt = $this->db->prepare(
+            "DELETE FROM presensi_antrian WHERE siswa_id = ? AND status = 'PENDING'"
+        );
+        $stmt->execute([$siswaId]);
+        return (int) $stmt->rowCount();
+    }
+
     public function sudahAbsen(int $siswaId, int $jadwalId, string $tanggal): bool {
         $stmt = $this->db->prepare(
             "SELECT COUNT(*) FROM absensi WHERE siswa_id=? AND jadwal_id=? AND tanggal=?"

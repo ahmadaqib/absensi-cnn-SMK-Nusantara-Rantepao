@@ -199,8 +199,13 @@ class SiswaController {
         ]);
     }
 
-    // Hapus semua foto dataset satu siswa
+    // Hapus semua foto dataset satu siswa secara bersih (file + antrian pending)
     public function hapusDataset(): void {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            Response::redirectDenganPesan('siswa', 'gagal', 'Akses tidak valid.');
+            return;
+        }
+
         $id    = (int) ($_POST['siswa_id'] ?? 0);
         $siswa = $this->siswaModel->cariById($id);
 
@@ -209,14 +214,23 @@ class SiswaController {
             return;
         }
 
+        // Hapus seluruh isi direktori + direktori itu sendiri
         $dirDataset = BASE_PATH . '/python/dataset/' . $siswa['nis'] . '/';
         if (is_dir($dirDataset)) {
-            array_map('unlink', glob($dirDataset . '*.jpg'));
+            $files = array_diff(scandir($dirDataset), ['.', '..']);
+            foreach ($files as $file) {
+                unlink($dirDataset . $file);
+            }
+            rmdir($dirDataset);
         }
+
+        // Hapus entri PENDING di antrian RPA agar tidak menggantung setelah retrain
+        $absensiModel  = new Absensi();
+        $absensiModel->hapusAntrianPending($id);
 
         Response::redirectDenganPesan(
             'siswa/dataset?id=' . $id, 'sukses',
-            'Dataset wajah ' . $siswa['nama'] . ' berhasil dihapus.'
+            'Dataset wajah ' . $siswa['nama'] . ' berhasil dihapus. Silakan ambil foto ulang.'
         );
     }
 

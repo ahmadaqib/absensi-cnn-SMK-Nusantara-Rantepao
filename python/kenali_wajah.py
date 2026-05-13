@@ -49,6 +49,15 @@ def base64_ke_array(data_base64: str) -> np.ndarray | None:
         return None
 
 
+def _rotasi_tta(gambar: np.ndarray, sudut: float) -> np.ndarray:
+    """Rotasi gambar float32 untuk keperluan TTA (tanpa crop, border reflect)."""
+    h, w = gambar.shape[:2]
+    M = cv2.getRotationMatrix2D((w / 2, h / 2), sudut, 1.0)
+    return cv2.warpAffine(
+        gambar, M, (w, h), borderMode=cv2.BORDER_REFLECT_101
+    ).astype(np.float32)
+
+
 def kenali(data_base64: str) -> dict:
     """
     Terima gambar base64, kembalikan dict hasil pengenalan:
@@ -75,15 +84,16 @@ def kenali(data_base64: str) -> dict:
     crop  = crop_dan_resize(gambar, x, y, w, h)
     norm  = normalisasi(crop)
 
-    # Inferensi dengan Test-Time Augmentation (TTA)
-    # Rata-ratakan prediksi dari gambar asli dan flip horizontal
-    # untuk confidence yang lebih stabil dan akurat
+    # TTA 4-varian: asli, flip, rotasi +5°, rotasi -5°
+    # Satu batch predict → 4× lebih efisien dari predict terpisah
     try:
-        input_asli = np.expand_dims(norm, axis=0)            # (1, 224, 224, 3)
-        input_flip = np.expand_dims(norm[:, ::-1, :], axis=0) # flip horizontal
-        pred_asli  = _model.predict(input_asli, verbose=0)[0]
-        pred_flip  = _model.predict(input_flip, verbose=0)[0]
-        prediksi   = (pred_asli + pred_flip) / 2.0
+        batch_tta = np.stack([
+            norm,                        # asli
+            norm[:, ::-1, :],            # flip horizontal
+            _rotasi_tta(norm, 5.0),      # miring sedikit kanan
+            _rotasi_tta(norm, -5.0),     # miring sedikit kiri
+        ], axis=0)                       # shape: (4, 224, 224, 3)
+        prediksi = _model.predict(batch_tta, verbose=0).mean(axis=0)
     except Exception as e:
         return {'status': 'error', 'pesan': f'Inferensi CNN gagal: {e}'}
 

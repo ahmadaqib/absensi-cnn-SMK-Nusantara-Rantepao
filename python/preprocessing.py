@@ -33,8 +33,19 @@ def deteksi_wajah(gambar_bgr: np.ndarray) -> list[tuple[int, int, int, int]]:
     return list(wajah) if len(wajah) > 0 else []
 
 
+def _clahe_enhance(gambar_bgr: np.ndarray) -> np.ndarray:
+    """
+    CLAHE pada channel Luminansi (ruang LAB) untuk normalisasi pencahayaan.
+    Menangani kondisi kelas: neon overhead, backlit jendela, dll.
+    """
+    lab = cv2.cvtColor(gambar_bgr, cv2.COLOR_BGR2LAB)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
 def crop_dan_resize(gambar_bgr: np.ndarray, x: int, y: int, w: int, h: int) -> np.ndarray:
-    """Crop area wajah dan resize ke UKURAN_INPUT."""
+    """Crop area wajah, terapkan CLAHE, lalu resize ke UKURAN_INPUT."""
     # Tambahkan sedikit margin agar wajah tidak terpotong tepat di tepi
     margin = int(min(w, h) * 0.15)
     x1 = max(0, x - margin)
@@ -43,6 +54,7 @@ def crop_dan_resize(gambar_bgr: np.ndarray, x: int, y: int, w: int, h: int) -> n
     y2 = min(gambar_bgr.shape[0], y + h + margin)
 
     crop   = gambar_bgr[y1:y2, x1:x2]
+    crop   = _clahe_enhance(crop)                                    # Normalisasi pencahayaan
     crop   = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
     resize = cv2.resize(crop, UKURAN_INPUT, interpolation=cv2.INTER_AREA)
     return resize

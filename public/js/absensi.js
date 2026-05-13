@@ -9,7 +9,6 @@ const KELAS_ADA_GPS = window.__KELAS_ADA_GPS__ || false;
 
 const video    = document.getElementById('videoKamera');
 const canvas   = document.getElementById('canvasKamera');
-const bingkai  = document.getElementById('bingkaiWajah');
 const elStatus = document.getElementById('statusAbsensi');
 const elHasil  = document.getElementById('hasilAbsensi');
 const dotGps   = document.getElementById('dotGps');
@@ -20,6 +19,12 @@ let sedangProses    = false;
 let intervalCapture = null;
 let intervalPolling = null;
 let gpsSedangDiminta = false;
+
+// Temporal voting — tunggu 2 frame berturut-turut sebelum tampilkan sukses ke user.
+// Frame ke-1 sudah disimpan DB (duplicate check PHP mencegah ganda).
+// Frame ke-2 (atau duplikat server) = konfirmasi UI.
+let konfirmasiState = { nis: null, data: null };
+let konfirmasiTimer = null;
 
 // Posisi GPS siswa — diperbarui secara berkala
 let posisiGps = { lat: null, lon: null, akurasi: null, lolos: !KELAS_ADA_GPS };
@@ -151,6 +156,7 @@ async function captureFrame() {
     }
 
     sedangProses = true;
+    mulaiVisCnn();
 
     canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
@@ -174,29 +180,60 @@ async function captureFrame() {
     }
 }
 
+/* ───── Temporal voting helpers ───── */
+function resetKonfirmasi() {
+    clearTimeout(konfirmasiTimer);
+    konfirmasiState = { nis: null, data: null };
+}
+
+function tampilkanBerhasil(data) {
+    clearTimeout(konfirmasiTimer);
+    setBingkai('berhasil');
+    setStatus('Absensi berhasil!', 'sukses');
+    tampilkanKonfirmasi(data);
+    if (KELAS_ADA_GPS && data.jarak !== null) {
+        setGpsStatus('lolos');
+        pesanGps.textContent = `Dalam area kelas (${data.jarak} m dari kelas)`;
+        dotGps.classList.remove('animate-pulse');
+    }
+    jedaCapture(4000);
+    resetKonfirmasi();
+}
+
 /* ───── Proses hasil dari server ───── */
 function tanganiHasil(data) {
+    // Tampilkan confidence score di visualisasi CNN jika ada
+    if (typeof data.confidence === 'number') selesaiVisCnn(data.confidence);
+
     switch (data.status) {
         case 'berhasil':
-            setBingkai('berhasil');
-            setStatus('Absensi berhasil!', 'sukses');
-            tampilkanKonfirmasi(data);
-            // Update GPS dot — lolos
-            if (KELAS_ADA_GPS && data.jarak !== null) {
-                setGpsStatus('lolos');
-                pesanGps.textContent = `Dalam area kelas (${data.jarak} m dari kelas)`;
-                dotGps.classList.remove('animate-pulse');
+            if (konfirmasiState.nis === data.nis) {
+                // Frame ke-2 untuk NIS yang sama → konfirmasi penuh
+                tampilkanBerhasil(data);
+            } else {
+                // Frame ke-1 — DB sudah tersimpan, tunggu konfirmasi
+                konfirmasiState = { nis: data.nis, data: data };
+                setBingkai('peringatan');
+                setStatus('Wajah dikenali, mengkonfirmasi...', 'peringatan');
+                // Fallback: tampilkan sukses setelah 5 detik jika frame ke-2 tidak datang
+                konfirmasiTimer = setTimeout(() => tampilkanBerhasil(data), 5000);
             }
-            jedaCapture(4000);
             break;
 
         case 'duplikat':
-            setBingkai('peringatan');
-            setStatus(data.pesan, 'peringatan');
-            jedaCapture(3000);
+            if (konfirmasiState.nis === data.nis) {
+                // Server mengembalikan duplikat setelah frame ke-1 berhasil → konfirmasi UI
+                tampilkanBerhasil(konfirmasiState.data || data);
+            } else {
+                resetKonfirmasi();
+                setBingkai('peringatan');
+                setStatus(data.pesan, 'peringatan');
+                jedaCapture(3000);
+            }
             break;
 
         case 'error_gps':
+            resetKonfirmasi();
             setBingkai('error');
             setStatus(data.pesan, 'error');
             setGpsStatus('gagal');
@@ -215,6 +252,7 @@ function tanganiHasil(data) {
             break;
 
         case 'salah_kelas':
+            resetKonfirmasi();
             setBingkai('peringatan');
             setStatus(data.pesan, 'peringatan');
             tampilkanRekomendasiKelas(data);
@@ -222,12 +260,15 @@ function tanganiHasil(data) {
             break;
 
         case 'gagal':
+            // Jangan reset konfirmasi saat gagal — bisa karena frame transisi,
+            // frame ke-2 mungkin masih berhasil jika wajah kembali fokus
             setBingkai('gagal');
             setStatus(formatPesanGagal(data), 'error');
             setTimeout(() => setBingkai('mencari'), 2000);
             break;
 
         case 'error':
+            resetKonfirmasi();
             setStatus(data.pesan, 'error');
             setBingkai('error');
             break;
@@ -239,16 +280,21 @@ function tanganiHasil(data) {
 }
 
 /* ───── UI helpers ───── */
+const _HINT_TEKS = {
+    mencari   : 'Posisikan wajah dalam kotak',
+    berhasil  : 'Wajah dikenali ✓',
+    peringatan: 'Mengkonfirmasi…',
+    gagal     : 'Tidak dikenali — coba lagi',
+    error     : '',
+};
+
 function setBingkai(state) {
-    const kelas = {
-        mencari   : 'border-white/50',
-        berhasil  : 'border-green-400',
-        gagal     : 'border-red-400',
-        peringatan: 'border-amber-400',
-        error     : 'border-red-600',
-    };
-    bingkai.className = bingkai.className.replace(/border-\S+/g, '');
-    bingkai.classList.add('border-2', 'border-dashed', kelas[state] || 'border-white/50');
+    // Satu data-state mengontrol warna korner + hint + scanner via CSS
+    const zona = document.getElementById('zonaWajah');
+    if (zona) zona.dataset.state = state;
+
+    const hint = document.getElementById('hintWajah');
+    if (hint) hint.textContent = _HINT_TEKS[state] ?? '';
 }
 
 function setStatus(pesan, tipe = '') {
@@ -385,8 +431,137 @@ function tampilkanStatusTabelLive(pesan) {
     `;
 }
 
+/* ───── Visualisasi Pipeline CNN ───── */
+let _timerVisCnn = [];
+
+function _setupVisCnn() {
+    // Generate 36 sel untuk feature map grid (6×6)
+    const fmGrid = document.getElementById('cnnFmGrid');
+    if (fmGrid && fmGrid.childElementCount === 0) {
+        const palet = ['#DBEAFE','#BFDBFE','#93C5FD','#60A5FA','#3B82F6','#2563EB'];
+        for (let i = 0; i < 36; i++) {
+            const c = document.createElement('div');
+            c.className = 'cnn-fm-cell rounded-sm';
+            c.style.backgroundColor = palet[i % palet.length];
+            // Delay stagger: simulasi konvolusi kernel berjalan diagonal
+            c.style.animationDelay = `${((Math.floor(i / 6) + (i % 6)) * 0.06).toFixed(2)}s`;
+            fmGrid.appendChild(c);
+        }
+    }
+
+    // Grid 3×3 sebelum pooling
+    const poolBefore = document.getElementById('cnnPoolBefore');
+    if (poolBefore && poolBefore.childElementCount === 0) {
+        ['#BFDBFE','#93C5FD','#60A5FA',
+         '#3B82F6','#93C5FD','#BFDBFE',
+         '#60A5FA','#3B82F6','#93C5FD'].forEach(warna => {
+            const d = document.createElement('div');
+            d.className = 'rounded-sm';
+            d.style.backgroundColor = warna;
+            poolBefore.appendChild(d);
+        });
+    }
+
+    // Grid 2×2 setelah pooling (lebih pekat = compressed)
+    const poolAfter = document.getElementById('cnnPoolAfter');
+    if (poolAfter && poolAfter.childElementCount === 0) {
+        ['#60A5FA','#2563EB','#3B82F6','#1D4ED8'].forEach(warna => {
+            const d = document.createElement('div');
+            d.className = 'rounded-sm';
+            d.style.backgroundColor = warna;
+            poolAfter.appendChild(d);
+        });
+    }
+}
+
+function mulaiVisCnn() {
+    const panel = document.getElementById('panelVisCnn');
+    if (!panel) return;
+
+    // Bersihkan timer sebelumnya dan reset semua state visual
+    _timerVisCnn.forEach(t => clearTimeout(t));
+    _timerVisCnn = [];
+
+    ['cnnStage1','cnnStage2','cnnStage3'].forEach(id =>
+        document.getElementById(id)?.classList.remove('cnn-aktif')
+    );
+    ['cnnArrow1','cnnArrow2'].forEach(id =>
+        document.getElementById(id)?.classList.remove('cnn-aktif')
+    );
+    document.querySelectorAll('.cnn-fm-cell').forEach(c => c.classList.remove('cnn-animasi'));
+    document.getElementById('cnnPoolAfter')?.classList.remove('cnn-aktif');
+    document.querySelectorAll('.cnn-bar').forEach(b => b.style.height = '8%');
+    const hasilEl = document.getElementById('cnnHasilConf');
+    if (hasilEl) hasilEl.classList.add('hidden');
+    const barEl = document.getElementById('cnnBarConf');
+    if (barEl) barEl.style.width = '0%';
+    const faseEl = document.getElementById('cnnFaseLabel');
+    if (faseEl) faseEl.textContent = '';
+
+    panel.classList.remove('hidden');
+
+    // Tahap 1 — Konvolusi: feature map bercahaya dalam pola diagonal
+    _timerVisCnn.push(setTimeout(() => {
+        document.getElementById('cnnStage1')?.classList.add('cnn-aktif');
+        document.querySelectorAll('.cnn-fm-cell').forEach(c => c.classList.add('cnn-animasi'));
+        if (faseEl) faseEl.textContent = '1/3 Konvolusi';
+    }, 0));
+
+    // Tahap 2 — Pooling: grid besar mengecil menjadi grid kompak
+    _timerVisCnn.push(setTimeout(() => {
+        document.getElementById('cnnArrow1')?.classList.add('cnn-aktif');
+        document.getElementById('cnnStage2')?.classList.add('cnn-aktif');
+        document.getElementById('cnnPoolAfter')?.classList.add('cnn-aktif');
+        if (faseEl) faseEl.textContent = '2/3 Pooling';
+    }, 560));
+
+    // Tahap 3 — Fully Connected: bar probabilitas naik (softmax simulasi)
+    _timerVisCnn.push(setTimeout(() => {
+        document.getElementById('cnnArrow2')?.classList.add('cnn-aktif');
+        document.getElementById('cnnStage3')?.classList.add('cnn-aktif');
+        if (faseEl) faseEl.textContent = '3/3 Klasifikasi';
+
+        // Animasi bar secara berurutan: bar tengah (winner) paling tinggi
+        const barHeights = [18, 36, 80, 28, 12];
+        document.querySelectorAll('.cnn-bar').forEach((bar, i) => {
+            _timerVisCnn.push(setTimeout(() => {
+                bar.style.height = barHeights[i] + '%';
+            }, i * 90));
+        });
+    }, 1080));
+}
+
+function selesaiVisCnn(confidence) {
+    if (typeof confidence !== 'number') return;
+
+    const hasilEl = document.getElementById('cnnHasilConf');
+    const barEl   = document.getElementById('cnnBarConf');
+    const nilaiEl = document.getElementById('cnnNilaiConf');
+    if (!hasilEl) return;
+
+    hasilEl.classList.remove('hidden');
+    const pct = Math.round(confidence * 100);
+
+    // Delay kecil agar CSS transition tertrigger
+    const t = setTimeout(() => {
+        if (nilaiEl) nilaiEl.textContent = pct + '%';
+        if (barEl) {
+            barEl.style.width = pct + '%';
+            barEl.style.backgroundColor =
+                pct >= 85 ? '#15803D' :
+                pct >= 70 ? '#B45309' : '#B91C1C';
+        }
+        // Sesuaikan tinggi bar winner dengan nilai confidence nyata
+        const winner = document.querySelector('.cnn-bar-winner');
+        if (winner) winner.style.height = Math.max(pct, 30) + '%';
+    }, 80);
+
+    _timerVisCnn.push(t);
+}
+
 /* ───── Entry point ───── */
 document.addEventListener('DOMContentLoaded', () => {
+    _setupVisCnn();
     if (video) mulaiGps();
     mulaiPolling();
 });

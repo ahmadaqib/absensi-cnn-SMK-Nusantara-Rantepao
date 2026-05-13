@@ -5,6 +5,70 @@
     window.__RADIUS__ = <?= (int) ($koordinatKelas['radius'] ?? RADIUS_MAKSIMAL) ?>;
 </script>
 
+<style>
+/* ── Animasi visualisasi pipeline CNN ── */
+@keyframes cnnCellPulse {
+    0%, 100% { opacity: 0.18; }
+    50%       { opacity: 1;    }
+}
+.cnn-fm-cell.cnn-animasi {
+    animation: cnnCellPulse 1.4s ease-in-out infinite;
+}
+.cnn-stage-box {
+    transition: opacity 0.35s ease, border-color 0.35s ease;
+    opacity: 0.28;
+}
+.cnn-stage-box.cnn-aktif {
+    opacity: 1;
+    border-color: #1E40AF !important;
+}
+.cnn-arrow { transition: color 0.35s ease; }
+.cnn-arrow.cnn-aktif { color: #1E40AF; }
+.cnn-bar {
+    transition: height 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.cnn-pool-after {
+    transition: opacity 0.55s ease, transform 0.55s ease;
+    opacity: 0.1;
+    transform: scale(0.75);
+}
+.cnn-pool-after.cnn-aktif {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ── Overlay zona wajah ── */
+.korner-bracket {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: rgba(255,255,255,0.6);
+    transition: border-color 0.35s ease, transform 0.35s ease;
+}
+/* Warna korner berdasarkan data-state */
+#zonaWajah[data-state="berhasil"]   .korner-bracket { border-color: #4ADE80; transform: scale(1.12); }
+#zonaWajah[data-state="peringatan"] .korner-bracket { border-color: #FCD34D; }
+#zonaWajah[data-state="gagal"]      .korner-bracket { border-color: #F87171; }
+#zonaWajah[data-state="error"]      .korner-bracket { border-color: #EF4444; }
+
+/* Teks hint */
+#hintWajah { transition: opacity 0.3s ease, color 0.3s ease; }
+#zonaWajah[data-state="berhasil"]   #hintWajah { color: #4ADE80; }
+#zonaWajah[data-state="peringatan"] #hintWajah { color: #FCD34D; }
+#zonaWajah[data-state="gagal"]      #hintWajah { color: #F87171; }
+#zonaWajah[data-state="error"]      #hintWajah { opacity: 0; }
+
+/* Scanner sweep — hanya muncul saat data-state="mencari" */
+#scannerLine { display: none; }
+#zonaWajah[data-state="mencari"] #scannerLine { display: block; }
+@keyframes scannerSweep {
+    0%   { top: 2%;  opacity: 0.9; }
+    85%  { opacity: 0.7; }
+    100% { top: 96%; opacity: 0; }
+}
+#scannerLine { animation: scannerSweep 1.9s ease-in-out infinite; }
+</style>
+
 <div class="max-w-4xl">
 
     <!-- Pilih kelas & jadwal -->
@@ -88,17 +152,59 @@
             <!-- Feed kamera -->
             <div class="relative bg-slate-900 rounded-xl overflow-hidden" style="aspect-ratio:4/3">
                 <video id="videoKamera" autoplay playsinline muted
-                       class="w-full h-full object-cover"></video>
+                       class="w-full h-full object-cover"
+                       style="transform:scaleX(-1)"></video>
 
-                <!-- Overlay bingkai wajah -->
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div id="bingkaiWajah"
-                         class="w-44 h-52 border-2 border-dashed border-white/50 rounded-2xl transition-colors duration-300"></div>
+                <!-- Overlay kamera: dimmer luar zona + korner bracket + scanner -->
+                <div class="absolute inset-0 pointer-events-none" id="overlayKamera">
+
+                    <!-- 4 strip gelap di luar zona wajah -->
+                    <div class="absolute bg-black/50" style="top:0;left:0;right:0;height:9%"></div>
+                    <div class="absolute bg-black/50" style="bottom:0;left:0;right:0;height:17%"></div>
+                    <div class="absolute bg-black/50" style="top:9%;bottom:17%;left:0;width:23%"></div>
+                    <div class="absolute bg-black/50" style="top:9%;bottom:17%;right:0;width:23%"></div>
+
+                    <!-- Zona wajah: 54% lebar × 74% tinggi, terpusat -->
+                    <div id="zonaWajah" data-state="mencari"
+                         class="absolute" style="top:9%;left:23%;width:54%;height:74%;">
+
+                        <!-- Korner TL -->
+                        <div class="korner-bracket" style="top:0;left:0;
+                             border-top:2.5px solid;border-left:2.5px solid;
+                             border-radius:5px 0 0 0;"></div>
+                        <!-- Korner TR -->
+                        <div class="korner-bracket" style="top:0;right:0;
+                             border-top:2.5px solid;border-right:2.5px solid;
+                             border-radius:0 5px 0 0;"></div>
+                        <!-- Korner BL -->
+                        <div class="korner-bracket" style="bottom:0;left:0;
+                             border-bottom:2.5px solid;border-left:2.5px solid;
+                             border-radius:0 0 0 5px;"></div>
+                        <!-- Korner BR -->
+                        <div class="korner-bracket" style="bottom:0;right:0;
+                             border-bottom:2.5px solid;border-right:2.5px solid;
+                             border-radius:0 0 5px 0;"></div>
+
+                        <!-- Garis scanner biru (hanya saat state=mencari) -->
+                        <div id="scannerLine" class="absolute left-0 right-0"
+                             style="height:2px;background:linear-gradient(90deg,
+                                    transparent 0%,rgba(96,165,250,0.85) 25%,
+                                    rgba(186,230,253,1) 50%,rgba(96,165,250,0.85) 75%,
+                                    transparent 100%);"></div>
+
+                        <!-- Teks panduan di bawah dalam zona -->
+                        <p id="hintWajah"
+                           class="absolute bottom-0 left-0 right-0 text-center
+                                  text-[11px] text-white/80 pb-2 tracking-wide">
+                            Posisikan wajah dalam kotak
+                        </p>
+                    </div>
                 </div>
 
-                <!-- Indikator scanning -->
-                <div class="absolute top-3 right-3">
-                    <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+                <!-- Indikator REC pojok kanan atas -->
+                <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                    <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <span class="text-[10px] text-white/60 font-mono">REC</span>
                 </div>
             </div>
 
@@ -146,6 +252,8 @@
             </div>
         </div>
     </div>
+
+    <?php require_once BASE_PATH . '/views/absensi/_panel_cnn.php'; ?>
 </div>
 
 <script src="<?= APP_URL ?>/public/js/absensi.js?v=<?= filemtime(BASE_PATH . '/public/js/absensi.js') ?>"></script>

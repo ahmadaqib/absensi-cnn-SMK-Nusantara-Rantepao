@@ -3,6 +3,21 @@ $targetFoto  = 10;
 $minimalFoto = 5;
 $sudahCukup  = $jumlahFoto >= $targetFoto;
 $bisaTraining = $jumlahFoto >= $minimalFoto;
+
+$panduan = [
+    1  => ['ikon' => '😐', 'label' => 'Frontal',        'instruksi' => 'Hadap kamera lurus, posisi netral.',        'detail' => 'Foto utama. Pastikan wajah terlihat jelas dan pencahayaan merata.'],
+    2  => ['ikon' => '↩',  'label' => 'Kiri Ringan',    'instruksi' => 'Putar kepala ±15° ke kiri.',               'detail' => 'Sedikit miring, bukan menoleh jauh. Kedua mata masih terlihat.'],
+    3  => ['ikon' => '↪',  'label' => 'Kanan Ringan',   'instruksi' => 'Putar kepala ±15° ke kanan.',              'detail' => 'Posisi cermin dari foto sebelumnya.'],
+    4  => ['ikon' => '⬅',  'label' => 'Kiri Jauh',      'instruksi' => 'Putar kepala ±30° ke kiri.',               'detail' => 'Lebih jauh dari foto 2 — hidung hampir sejajar pipi.'],
+    5  => ['ikon' => '➡',  'label' => 'Kanan Jauh',     'instruksi' => 'Putar kepala ±30° ke kanan.',              'detail' => 'Posisi cermin dari foto 4.'],
+    6  => ['ikon' => '⬆',  'label' => 'Mendongak',      'instruksi' => 'Angkat dagu sedikit ke atas.',             'detail' => 'Jangan terlalu jauh — dagu naik sekitar 10–15°.'],
+    7  => ['ikon' => '⬇',  'label' => 'Menunduk',       'instruksi' => 'Turunkan kepala sedikit ke bawah.',        'detail' => 'Tatap kamera dari bawah, dagu sedikit masuk.'],
+    8  => ['ikon' => '😊', 'label' => 'Senyum',         'instruksi' => 'Frontal sambil senyum ringan.',            'detail' => 'Ekspresi alami, bukan senyum lebar berlebihan.'],
+    9  => ['ikon' => '💡', 'label' => 'Cahaya Samping', 'instruksi' => 'Hadap kamera, cahaya dari samping kiri.',  'detail' => 'Geser sedikit agar satu sisi wajah lebih terang — latih variasi cahaya.'],
+    10 => ['ikon' => '↔',  'label' => 'Jarak Berbeda',  'instruksi' => 'Mundur ±20 cm dari posisi biasa.',         'detail' => 'Wajah lebih kecil di frame — variasi jarak meningkatkan robustness.'],
+];
+
+$slotAktif = $sudahCukup ? 0 : ($jumlahFoto + 1);
 ?>
 
 <div class="max-w-3xl">
@@ -35,21 +50,41 @@ $bisaTraining = $jumlahFoto >= $minimalFoto;
         <div class="bg-white border border-slate-200 rounded-lg p-5">
             <h2 class="text-sm font-semibold text-slate-700 mb-3">Kamera</h2>
 
-            <!-- Panduan -->
-            <div class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3 text-xs text-blue-800">
-                Variasikan posisi: frontal, sedikit ke kiri, sedikit ke kanan.
-                Pastikan pencahayaan cukup.
+            <!-- Kartu instruksi per foto (diperbarui JS setiap foto tersimpan) -->
+            <div id="kartuInstruksi"
+                 class="<?= $sudahCukup ? 'hidden ' : '' ?>bg-blue-50 border border-blue-200 rounded-md px-3 py-2.5 mb-3">
+                <div class="flex items-start gap-3">
+                    <span id="instrIkon" class="text-2xl leading-none flex-shrink-0 mt-0.5">
+                        <?= $sudahCukup ? '' : $panduan[$slotAktif]['ikon'] ?>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span id="instrNomor" class="text-[10px] text-blue-500 font-mono">
+                                <?= $sudahCukup ? '' : "Foto $slotAktif dari $targetFoto" ?>
+                            </span>
+                            <span id="instrJudul" class="text-xs font-semibold text-blue-800">
+                                <?= $sudahCukup ? '' : htmlspecialchars($panduan[$slotAktif]['label']) ?>
+                            </span>
+                        </div>
+                        <p id="instrTeks" class="text-xs text-blue-800">
+                            <?= $sudahCukup ? '' : htmlspecialchars($panduan[$slotAktif]['instruksi']) ?>
+                        </p>
+                        <p id="instrDetail" class="text-[10px] text-blue-600 mt-0.5">
+                            <?= $sudahCukup ? '' : htmlspecialchars($panduan[$slotAktif]['detail']) ?>
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <div class="relative bg-slate-900 rounded-lg overflow-hidden" style="aspect-ratio:4/3">
                 <video id="video" autoplay playsinline muted
-                       class="w-full h-full object-cover"></video>
-                <!-- Overlay bingkai wajah -->
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div id="bingkai"
-                         class="w-40 h-48 border-2 border-dashed border-white/50 rounded-xl transition-colors"></div>
+                       class="w-full h-full object-cover"
+                       style="transform:scaleX(-1)"></video>
+                <!-- Panduan posisi wajah -->
+                <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div class="w-36 h-44 rounded-xl"
+                         style="border:2px dashed rgba(255,255,255,0.35)"></div>
                 </div>
-                <!-- Status overlay -->
                 <div id="statusKamera"
                      class="absolute bottom-3 left-0 right-0 text-center text-xs text-white/80">
                     Memuat kamera...
@@ -104,18 +139,29 @@ $bisaTraining = $jumlahFoto >= $minimalFoto;
                 <?php
                 $dirDataset = BASE_PATH . '/python/dataset/' . $siswa['nis'] . '/';
                 for ($i = 1; $i <= $targetFoto; $i++):
-                    $fotoAda = is_file($dirDataset . "foto_$i.jpg");
+                    $fotoAda  = is_file($dirDataset . "foto_$i.jpg");
+                    $isAktif  = !$fotoAda && $i === $slotAktif;
+                    $borderSt = $isAktif
+                        ? 'border-color:#1E40AF;border-style:solid;background:#EFF6FF;'
+                        : '';
                 ?>
                 <div id="slot-<?= $i ?>"
-                     class="aspect-square rounded-md overflow-hidden border border-slate-200
-                            <?= $fotoAda ? 'bg-green-50' : 'bg-slate-100' ?>">
+                     class="aspect-square rounded-md overflow-hidden
+                            <?= $fotoAda ? 'border border-green-200 bg-green-50' : 'border border-dashed border-slate-200 bg-slate-50' ?>"
+                     <?= $borderSt ? "style=\"$borderSt\"" : '' ?>>
                     <?php if ($fotoAda): ?>
                     <img src="<?= APP_URL ?>/python/dataset/<?= $siswa['nis'] ?>/foto_<?= $i ?>.jpg"
-                         class="w-full h-full object-cover"
-                         alt="Foto <?= $i ?>">
+                         class="w-full h-full object-cover" alt="Foto <?= $i ?>">
                     <?php else: ?>
-                    <div class="w-full h-full flex items-center justify-center text-slate-300 text-xs font-mono">
-                        <?= $i ?>
+                    <div data-inner class="w-full h-full flex flex-col items-center justify-center gap-0.5"
+                         <?= $isAktif ? 'style="color:#1E40AF"' : '' ?>>
+                        <span class="text-base leading-none"><?= $panduan[$i]['ikon'] ?></span>
+                        <span class="text-[8px] font-medium text-center px-0.5 leading-tight line-clamp-1">
+                            <?= htmlspecialchars($panduan[$i]['label']) ?>
+                        </span>
+                        <span class="text-[8px] font-mono <?= $isAktif ? '' : 'text-slate-300' ?>">
+                            <?= $i ?>
+                        </span>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -179,118 +225,11 @@ $bisaTraining = $jumlahFoto >= $minimalFoto;
 </div>
 
 <script>
-const SISWA_ID     = <?= $siswa['id'] ?>;
-const TARGET_FOTO  = <?= $targetFoto ?>;
-const MINIMAL_FOTO = <?= $minimalFoto ?>;
-let jumlahTersimpan = <?= $jumlahFoto ?>;
-let sedangSimpan  = false;
-
-const video      = document.getElementById('video');
-const canvas     = document.getElementById('canvas');
-const btnAmbil   = document.getElementById('btnAmbil');
-const bingkai    = document.getElementById('bingkai');
-const statusKam  = document.getElementById('statusKamera');
-const progressBar= document.getElementById('progressBar');
-const pesanSt    = document.getElementById('pesanStatus');
-const jmlEl      = document.getElementById('jumlahFoto');
-
-// Mulai kamera
-navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-    .then(stream => {
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-            btnAmbil.disabled = jumlahTersimpan >= TARGET_FOTO;
-            statusKam.textContent = jumlahTersimpan >= TARGET_FOTO
-                ? 'Dataset sudah lengkap.'
-                : 'Kamera siap. Klik "Ambil Foto".';
-            bingkai.classList.replace('border-white/50', 'border-green-400');
-        };
-    })
-    .catch(() => {
-        statusKam.textContent = 'Gagal mengakses kamera.';
-        bingkai.classList.replace('border-white/50', 'border-red-400');
-    });
-
-btnAmbil.addEventListener('click', () => {
-    if (sedangSimpan || jumlahTersimpan >= TARGET_FOTO) return;
-    sedangSimpan = true;
-    btnAmbil.disabled = true;
-    btnAmbil.textContent = 'Menyimpan...';
-
-    // Capture frame dari video
-    canvas.width  = video.videoWidth  || 640;
-    canvas.height = video.videoHeight || 480;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const base64 = canvas.toDataURL('image/jpeg', 0.85);
-
-    const form = new FormData();
-    form.append('siswa_id', SISWA_ID);
-    form.append('gambar', base64);
-
-    fetch('<?= APP_URL ?>/siswa/dataset/simpan', { method: 'POST', body: form })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'ok' || data.status === 'penuh') {
-                jumlahTersimpan = data.jumlah;
-                jmlEl.textContent = jumlahTersimpan;
-                updateProgress();
-                updateSlot(jumlahTersimpan, base64);
-
-                if (data.selesai || data.status === 'penuh') {
-                    statusKam.textContent = 'Dataset lengkap!';
-                    btnAmbil.textContent  = 'Selesai';
-                    pesanSt.textContent   = 'Dataset lengkap. Siap untuk training.';
-                    progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#15803D]');
-                    pesanSt.classList.add('text-green-700', 'font-semibold');
-                } else {
-                    btnAmbil.textContent = 'Ambil Foto';
-                    btnAmbil.disabled    = false;
-                    statusKam.textContent = `${jumlahTersimpan}/${TARGET_FOTO} foto tersimpan.`;
-                }
-            } else {
-                btnAmbil.textContent = 'Ambil Foto';
-                btnAmbil.disabled    = false;
-                statusKam.textContent = data.pesan || 'Gagal menyimpan foto.';
-            }
-        })
-        .catch(() => {
-            btnAmbil.textContent = 'Ambil Foto';
-            btnAmbil.disabled    = false;
-            statusKam.textContent = 'Error koneksi. Coba lagi.';
-        })
-        .finally(() => { sedangSimpan = false; });
-});
-
-function updateProgress() {
-    const pct = Math.min((jumlahTersimpan / TARGET_FOTO) * 100, 100);
-    progressBar.style.width = pct + '%';
-    // Update warna bar berdasarkan threshold
-    if (jumlahTersimpan >= TARGET_FOTO) {
-        progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#15803D]');
-    } else if (jumlahTersimpan >= MINIMAL_FOTO) {
-        progressBar.className = progressBar.className.replace(/bg-\S+/, 'bg-[#1E40AF]');
-        pesanSt.textContent = `Sudah cukup untuk training. Tambah hingga ${TARGET_FOTO} untuk hasil optimal.`;
-    }
-}
-
-function updateSlot(nomor, base64) {
-    const slot = document.getElementById('slot-' + nomor);
-    if (!slot) return;
-    slot.className = 'aspect-square rounded-md overflow-hidden border border-green-200 bg-green-50';
-    slot.innerHTML = `<img src="${base64}" class="w-full h-full object-cover" alt="Foto ${nomor}">`;
-}
-
-function tampilKonfirmasiRetake() {
-    document.getElementById('konfirmasiJumlah').textContent = jumlahTersimpan;
-    document.getElementById('dialogRetake').classList.remove('hidden');
-}
-
-function tutupKonfirmasiRetake() {
-    document.getElementById('dialogRetake').classList.add('hidden');
-}
-
-// Tutup dialog jika klik di luar area dialog
-document.getElementById('dialogRetake').addEventListener('click', function(e) {
-    if (e.target === this) tutupKonfirmasiRetake();
-});
+window.__SISWA_ID__    = <?= (int) $siswa['id'] ?>;
+window.__TARGET_FOTO__ = <?= $targetFoto ?>;
+window.__MINIMAL_FOTO__= <?= $minimalFoto ?>;
+window.__APP_URL__     = '<?= APP_URL ?>';
+window.__JUMLAH_AWAL__ = <?= $jumlahFoto ?>;
+window.__PANDUAN__     = <?= json_encode($panduan, JSON_UNESCAPED_UNICODE) ?>;
 </script>
+<script src="<?= APP_URL ?>/public/js/dataset.js?v=<?= filemtime(BASE_PATH . '/public/js/dataset.js') ?>"></script>
