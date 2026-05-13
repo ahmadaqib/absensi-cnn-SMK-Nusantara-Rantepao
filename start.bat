@@ -52,6 +52,12 @@ start "CNN Service (port 5000)" cmd /k "cd /d ^"%PYTHON_DIR%^" && ^"%PYTHON_CMD%
 
 :: Tunggu Flask siap
 timeout /t 2 /nobreak >nul
+powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5000/status -TimeoutSec 8 | Out-Null; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [PERINGATAN] CNN Service belum menjawab di http://127.0.0.1:5000/status
+    echo              Cek jendela "CNN Service (port 5000)" untuk error Python.
+    echo.
+)
 
 echo [2/2] Memulai Web Server PHP di port 8000...
 echo.

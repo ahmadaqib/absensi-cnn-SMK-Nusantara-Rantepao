@@ -16,7 +16,7 @@ define('THRESHOLD_CONFIDENCE', 0.85);
 define('THRESHOLD_PERINGATAN', 0.70);
 
 // URL Python CNN service
-define('CNN_SERVICE_URL', 'http://localhost:5000');
+define('CNN_SERVICE_URL', 'http://127.0.0.1:5000');
 
 // Interpreter Python untuk training dan service.
 // Kosongkan agar sistem otomatis memakai virtualenv lokal jika ada.
@@ -24,6 +24,9 @@ define('PYTHON_BIN', '');
 
 // Toleransi keterlambatan (menit)
 define('TOLERANSI_TERLAMBAT', 15);
+
+// Geofencing GPS — radius maksimal siswa dari koordinat kelas (meter)
+define('RADIUS_MAKSIMAL', 50);
 
 // Upload
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5 MB

@@ -20,9 +20,13 @@ class KelasController {
     }
 
     public function simpan(): void {
-        $id    = (int) ($_POST['id'] ?? 0);
-        $nama  = trim($_POST['nama'] ?? '');
-        $tahun = trim($_POST['tahun'] ?? '');
+        $id        = (int) ($_POST['id'] ?? 0);
+        $nama      = trim($_POST['nama'] ?? '');
+        $tahun     = trim($_POST['tahun'] ?? '');
+        $latitude  = trim($_POST['latitude'] ?? '');
+        $longitude = trim($_POST['longitude'] ?? '');
+        $radius    = trim($_POST['radius'] ?? '50');
+        $radius    = $radius === '' ? '50' : $radius;
 
         $validator = new Validator();
         $validator->wajib('nama', $nama, 'Nama kelas')
@@ -34,11 +38,35 @@ class KelasController {
             return;
         }
 
+        if (($latitude !== '' && ((float) $latitude < -90 || (float) $latitude > 90))
+            || ($longitude !== '' && ((float) $longitude < -180 || (float) $longitude > 180))) {
+            Response::redirectDenganPesan('kelas', 'gagal', 'Koordinat latitude/longitude tidak valid.');
+            return;
+        }
+
+        if (($latitude === '') !== ($longitude === '')) {
+            Response::redirectDenganPesan('kelas', 'gagal', 'Latitude dan longitude harus diisi berpasangan.');
+            return;
+        }
+
+        if ((int) $radius < 10 || (int) $radius > 500) {
+            Response::redirectDenganPesan('kelas', 'gagal', 'Radius harus di antara 10 sampai 500 meter.');
+            return;
+        }
+
+        $payload = [
+            'nama'      => $nama,
+            'tahun'     => $tahun,
+            'latitude'  => $latitude,
+            'longitude' => $longitude,
+            'radius'    => $radius ?: 50,
+        ];
+
         if ($id > 0) {
-            $this->kelasModel->update($id, ['nama' => $nama, 'tahun' => $tahun]);
+            $this->kelasModel->update($id, $payload);
             Response::redirectDenganPesan('kelas', 'sukses', "Kelas $nama berhasil diperbarui.");
         } else {
-            $this->kelasModel->simpan(['nama' => $nama, 'tahun' => $tahun]);
+            $this->kelasModel->simpan($payload);
             Response::redirectDenganPesan('kelas', 'sukses', "Kelas $nama berhasil ditambahkan.");
         }
     }
@@ -52,7 +80,6 @@ class KelasController {
             return;
         }
 
-        // Cegah hapus kelas yang masih memiliki siswa
         if ($this->kelasModel->jumlahSiswa($id) > 0) {
             Response::redirectDenganPesan('kelas', 'gagal',
                 "Kelas {$kelas['nama']} masih memiliki siswa aktif. Pindahkan siswa terlebih dahulu.");

@@ -59,8 +59,8 @@ def kenali(data_base64: str) -> dict:
     """
     try:
         _muat_model()
-    except FileNotFoundError as e:
-        return {'status': 'error', 'pesan': str(e)}
+    except Exception as e:
+        return {'status': 'error', 'pesan': f'Model CNN gagal dimuat: {e}'}
 
     gambar = base64_ke_array(data_base64)
     if gambar is None:
@@ -76,8 +76,11 @@ def kenali(data_base64: str) -> dict:
     norm  = normalisasi(crop)
 
     # Inferensi
-    input_arr = np.expand_dims(norm, axis=0)   # (1, 128, 128, 3)
-    prediksi  = _model.predict(input_arr, verbose=0)[0]
+    try:
+        input_arr = np.expand_dims(norm, axis=0)   # (1, 224, 224, 3)
+        prediksi  = _model.predict(input_arr, verbose=0)[0]
+    except Exception as e:
+        return {'status': 'error', 'pesan': f'Inferensi CNN gagal: {e}'}
 
     indeks_kelas = int(np.argmax(prediksi))
     confidence   = float(prediksi[indeks_kelas])
@@ -102,6 +105,38 @@ def kenali(data_base64: str) -> dict:
             'confidence': round(confidence, 4),
             'pesan'     : 'Wajah tidak dikenali. Pastikan wajah menghadap kamera.',
         }
+
+
+def cek_model() -> dict:
+    """Validasi file model dan muat model sekali agar status benar-benar siap."""
+    if not PATH_MODEL.exists():
+        return {
+            'model_ada': False,
+            'model_siap': False,
+            'pesan': 'Model belum ada. Lakukan training terlebih dahulu.',
+        }
+
+    if not PATH_LABEL.exists():
+        return {
+            'model_ada': True,
+            'model_siap': False,
+            'pesan': 'label_map.json tidak ditemukan. Lakukan training ulang.',
+        }
+
+    try:
+        _muat_model()
+    except Exception as e:
+        return {
+            'model_ada': True,
+            'model_siap': False,
+            'pesan': f'Model CNN gagal dimuat: {e}',
+        }
+
+    return {
+        'model_ada': True,
+        'model_siap': True,
+        'pesan': 'CNN service berjalan dan model siap.',
+    }
 
 
 def reload_model() -> None:

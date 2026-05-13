@@ -1,6 +1,6 @@
 """
 Fungsi preprocessing gambar untuk training dan inferensi CNN.
-Semua gambar diproses ke ukuran 128x128 RGB ternormalisasi [0, 1].
+Semua gambar diproses ke ukuran 224x224 RGB ternormalisasi [0, 1].
 """
 
 # pyrefly: ignore [missing-import]
@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from pathlib import Path
 
-UKURAN_INPUT = (128, 128)
+UKURAN_INPUT = (224, 224)
 
 # Haar Cascade untuk deteksi wajah
 _cascade = None
@@ -56,7 +56,7 @@ def normalisasi(gambar_rgb: np.ndarray) -> np.ndarray:
 def proses_file(path_file: str) -> np.ndarray | None:
     """
     Baca file, deteksi wajah, crop, resize, normalisasi.
-    Kembalikan array (128, 128, 3) atau None jika wajah tidak ditemukan.
+    Kembalikan array (224, 224, 3) atau None jika wajah tidak ditemukan.
     """
     gambar = cv2.imread(path_file)
     if gambar is None:
@@ -79,7 +79,7 @@ def muat_dataset(dir_dataset: str) -> tuple[np.ndarray, np.ndarray, dict]:
     """
     Baca semua folder NIS di dir_dataset.
     Kembalikan (X, y, label_map) dengan:
-        X        : array (N, 128, 128, 3)
+        X        : array (N, 224, 224, 3)
         y        : array (N,) integer kelas
         label_map: {indeks: nis}
     """

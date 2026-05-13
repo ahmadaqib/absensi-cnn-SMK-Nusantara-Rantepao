@@ -60,12 +60,20 @@ $PYTHON_CMD app.py &
 FLASK_PID=$!
 cd "$SCRIPT_DIR"
 
-# Tunggu Flask siap (1 detik)
-sleep 1
+# Tunggu Flask siap dan pastikan endpoint status benar-benar menjawab.
+for i in {1..20}; do
+    if curl -fsS http://127.0.0.1:5000/status >/dev/null 2>&1; then
+        break
+    fi
+    if ! kill -0 "$FLASK_PID" 2>/dev/null; then
+        echo "[ERROR] Flask gagal dijalankan. Cek output di atas."
+        exit 1
+    fi
+    sleep 1
+done
 
-# Cek Flask benar-benar jalan
-if ! kill -0 "$FLASK_PID" 2>/dev/null; then
-    echo "[ERROR] Flask gagal dijalankan. Cek output di atas."
+if ! curl -fsS http://127.0.0.1:5000/status >/dev/null 2>&1; then
+    echo "[ERROR] CNN Service belum menjawab di http://127.0.0.1:5000/status"
     exit 1
 fi
 echo "        Flask berjalan (PID: $FLASK_PID)"

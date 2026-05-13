@@ -8,10 +8,13 @@ class Absensi {
         $this->db = koneksiDB();
     }
 
+    // Simpan langsung ke tabel absensi (digunakan oleh UiPath Bot / RPA)
     public function simpan(array $data): bool {
         $stmt = $this->db->prepare(
-            "INSERT INTO absensi (siswa_id, jadwal_id, tanggal, jam, status, confidence)
-             VALUES (?, ?, ?, ?, ?, ?)
+            "INSERT INTO absensi
+                (siswa_id, jadwal_id, tanggal, jam, status, confidence,
+                 latitude_absensi, longitude_absensi, jarak_dari_kelas)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE jam=VALUES(jam), status=VALUES(status)"
         );
         return $stmt->execute([
@@ -21,6 +24,27 @@ class Absensi {
             $data['jam'],
             $data['status'],
             $data['confidence'] ?? null,
+            $data['latitude_absensi']  ?? null,
+            $data['longitude_absensi'] ?? null,
+            $data['jarak_dari_kelas']  ?? null,
+        ]);
+    }
+
+    // Tulis ke antrian RPA (dipanggil AbsensiController saat absensi real-time)
+    public function simpanAntrian(array $data): bool {
+        $stmt = $this->db->prepare(
+            "INSERT INTO presensi_antrian
+                (siswa_id, jadwal_id, timestamp_masuk, confidence,
+                 latitude, longitude, jarak_dari_kelas, status)
+             VALUES (?, ?, NOW(), ?, ?, ?, ?, 'PENDING')"
+        );
+        return $stmt->execute([
+            $data['siswa_id'],
+            $data['jadwal_id'],
+            $data['confidence'],
+            $data['latitude']          ?? null,
+            $data['longitude']         ?? null,
+            $data['jarak_dari_kelas']  ?? null,
         ]);
     }
 
@@ -29,6 +53,18 @@ class Absensi {
             "SELECT COUNT(*) FROM absensi WHERE siswa_id=? AND jadwal_id=? AND tanggal=?"
         );
         $stmt->execute([$siswaId, $jadwalId, $tanggal]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    // Cek apakah sudah ada di antrian (belum diproses bot) atau sudah final
+    public function sudahDiAntrian(int $siswaId, int $jadwalId): bool {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM presensi_antrian
+             WHERE siswa_id=? AND jadwal_id=?
+               AND DATE(timestamp_masuk) = CURDATE()
+               AND status IN ('PENDING','PROCESSING','DONE')"
+        );
+        $stmt->execute([$siswaId, $jadwalId]);
         return (int) $stmt->fetchColumn() > 0;
     }
 
@@ -48,10 +84,10 @@ class Absensi {
         return $stmt->fetch() ?: ['hadir'=>0,'terlambat'=>0,'tidak_hadir'=>0,'total_siswa'=>0];
     }
 
-    // Persentase kehadiran per kelas hari ini (untuk grafik)
+    // Persentase kehadiran per kelas hari ini (untuk grafik dashboard)
     public function kehadiranPerKelas(): array {
         $tanggal = date('Y-m-d');
-        return $this->db->prepare(
+        $stmt = $this->db->prepare(
             "SELECT k.nama AS nama_kelas,
                     COUNT(DISTINCT s.id) AS total,
                     COUNT(DISTINCT CASE WHEN a.status IN ('hadir','terlambat') THEN a.siswa_id END) AS hadir
@@ -60,20 +96,12 @@ class Absensi {
              LEFT JOIN absensi a ON a.siswa_id = s.id AND a.tanggal = ?
              GROUP BY k.id, k.nama
              ORDER BY k.nama"
-        )->execute([$tanggal])
-            ? $this->db->query(
-                "SELECT k.nama AS nama_kelas,
-                        COUNT(DISTINCT s.id) AS total,
-                        COUNT(DISTINCT CASE WHEN a.status IN ('hadir','terlambat') THEN a.siswa_id END) AS hadir
-                 FROM kelas k
-                 JOIN siswa s ON s.kelas_id = k.id AND s.aktif = 1
-                 LEFT JOIN absensi a ON a.siswa_id = s.id AND a.tanggal = '$tanggal'
-                 GROUP BY k.id, k.nama ORDER BY k.nama"
-            )->fetchAll()
-            : [];
+        );
+        $stmt->execute([$tanggal]);
+        return $stmt->fetchAll();
     }
 
-    // Absensi hari ini untuk tampil di tabel dashboard
+    // Absensi hari ini untuk tabel dashboard + live polling
     public function absensiHariIni(int $limit = 20): array {
         $tanggal = date('Y-m-d');
         $stmt = $this->db->prepare(

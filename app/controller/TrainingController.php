@@ -59,7 +59,11 @@ class TrainingController {
 
     // Endpoint polling — dipanggil JS setiap 3 detik
     public function status(): void {
-        Response::json($this->bacaStatus());
+        $status = $this->bacaStatus();
+        if (($status['status'] ?? '') === 'selesai' && class_exists('CNNService')) {
+            (new CNNService())->reloadModel();
+        }
+        Response::json($status);
     }
 
     private function bacaStatus(): array {

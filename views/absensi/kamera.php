@@ -1,6 +1,8 @@
 <script>
-    window.__APP_URL__   = '<?= APP_URL ?>';
-    window.__JADWAL_ID__ = <?= $jadwalId ?>;
+    window.__APP_URL__    = '<?= APP_URL ?>';
+    window.__JADWAL_ID__  = <?= $jadwalId ?>;
+    window.__KELAS_ADA_GPS__ = <?= $kelasAdaGps ? 'true' : 'false' ?>;
+    window.__RADIUS__ = <?= (int) ($koordinatKelas['radius'] ?? RADIUS_MAKSIMAL) ?>;
 </script>
 
 <div class="max-w-4xl">
@@ -45,6 +47,16 @@
         </form>
     </div>
 
+    <!-- Status GPS (dinamis via JS) -->
+    <div id="panelGps" class="bg-white border border-slate-200 rounded-lg px-4 py-3 mb-5 flex items-center gap-3">
+        <div id="dotGps" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+        <p id="pesanGps" class="text-sm text-slate-500">
+            <?= $kelasAdaGps
+                ? 'Memverifikasi lokasi GPS...'
+                : 'Kelas ini belum memiliki koordinat GPS — geofencing tidak aktif.' ?>
+        </p>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Kamera -->
@@ -55,10 +67,15 @@
             <div class="bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3 text-xs text-red-800">
                 CNN service tidak aktif. Jalankan <code class="font-mono">python app.py</code>
                 di folder <code class="font-mono">python/</code> terlebih dahulu.
+                Cek juga <code class="font-mono">http://127.0.0.1:5000/status</code>.
             </div>
             <?php elseif (!$statusCnn['model_ada']): ?>
             <div class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3 text-xs text-amber-800">
                 Model belum ada. Lakukan <a href="<?= APP_URL ?>/training" class="underline font-semibold">Training CNN</a> terlebih dahulu.
+            </div>
+            <?php elseif (array_key_exists('model_siap', $statusCnn) && !$statusCnn['model_siap']): ?>
+            <div class="bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3 text-xs text-red-800">
+                Model CNN ada, tetapi belum bisa dimuat: <?= htmlspecialchars($statusCnn['pesan'] ?? 'error tidak diketahui') ?>
             </div>
             <?php endif; ?>
 
@@ -101,7 +118,6 @@
             </div>
 
             <div id="hasilAbsensi" class="space-y-2 min-h-32">
-                <!-- Kartu hasil absensi diisi oleh JS -->
                 <p class="text-xs text-slate-300 text-center pt-10">
                     Hasil absensi akan muncul di sini secara otomatis.
                 </p>
@@ -132,4 +148,4 @@
     </div>
 </div>
 
-<script src="<?= APP_URL ?>/public/js/absensi.js"></script>
+<script src="<?= APP_URL ?>/public/js/absensi.js?v=<?= filemtime(BASE_PATH . '/public/js/absensi.js') ?>"></script>

@@ -38,7 +38,12 @@ class Siswa {
     }
 
     public function cariByNis(string $nis): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM siswa WHERE nis = ? LIMIT 1");
+        $stmt = $this->db->prepare(
+            "SELECT s.*, k.nama AS nama_kelas
+             FROM siswa s
+             JOIN kelas k ON s.kelas_id = k.id
+             WHERE s.nis = ? LIMIT 1"
+        );
         $stmt->execute([$nis]);
         $data = $stmt->fetch();
         return $data ?: null;

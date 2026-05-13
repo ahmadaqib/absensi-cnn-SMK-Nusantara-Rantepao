@@ -60,7 +60,7 @@ def bangun_model(n_kelas: int) -> tf.keras.Model:
         layers.MaxPooling2D(2, 2),
 
         layers.Flatten(),
-        layers.Dense(128, activation='relu'),
+        layers.Dense(256, activation='relu'),
         layers.Dropout(0.5),
         layers.Dense(n_kelas, activation='softmax'),
     ], name='absensi_cnn')

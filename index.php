@@ -7,7 +7,7 @@ require_once __DIR__ . '/config/database.php';
 foreach (['Auth', 'Response', 'Validator'] as $helper) {
     require_once __DIR__ . "/app/helper/$helper.php";
 }
-foreach (['Pengguna', 'Siswa', 'Kelas', 'Jadwal', 'Absensi'] as $model) {
+foreach (['Pengguna', 'Siswa', 'Kelas', 'Jadwal', 'Absensi', 'Notifikasi'] as $model) {
     $file = __DIR__ . "/app/model/$model.php";
     if (file_exists($file)) require_once $file;
 }
@@ -63,6 +63,12 @@ $rute = [
     ['GET',  '/laporan',            'LaporanController',   'index'],
     ['GET',  '/laporan/pdf',        'LaporanController',   'exportPdf'],
     ['GET',  '/laporan/excel',      'LaporanController',   'exportExcel'],
+
+    ['GET',  '/rpa',                'RpaController',       'index'],
+    ['POST', '/rpa/jalankan',       'RpaController',       'jalankan'],
+
+    ['GET',  '/notifikasi/cek',     'NotifikasiController','cek'],
+    ['POST', '/notifikasi/baca',    'NotifikasiController','baca'],
 ];
 
 $cocok = false;

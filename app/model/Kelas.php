@@ -20,13 +20,30 @@ class Kelas {
     }
 
     public function simpan(array $data): bool {
-        $stmt = $this->db->prepare("INSERT INTO kelas (nama, tahun) VALUES (?, ?)");
-        return $stmt->execute([$data['nama'], $data['tahun']]);
+        $stmt = $this->db->prepare(
+            "INSERT INTO kelas (nama, tahun, latitude, longitude, radius) VALUES (?, ?, ?, ?, ?)"
+        );
+        return $stmt->execute([
+            $data['nama'],
+            $data['tahun'],
+            $data['latitude'] !== ''  ? (float) $data['latitude']  : null,
+            $data['longitude'] !== '' ? (float) $data['longitude'] : null,
+            isset($data['radius']) && $data['radius'] !== '' ? (int) $data['radius'] : 50,
+        ]);
     }
 
     public function update(int $id, array $data): bool {
-        $stmt = $this->db->prepare("UPDATE kelas SET nama=?, tahun=? WHERE id=?");
-        return $stmt->execute([$data['nama'], $data['tahun'], $id]);
+        $stmt = $this->db->prepare(
+            "UPDATE kelas SET nama=?, tahun=?, latitude=?, longitude=?, radius=? WHERE id=?"
+        );
+        return $stmt->execute([
+            $data['nama'],
+            $data['tahun'],
+            $data['latitude'] !== ''  ? (float) $data['latitude']  : null,
+            $data['longitude'] !== '' ? (float) $data['longitude'] : null,
+            isset($data['radius']) && $data['radius'] !== '' ? (int) $data['radius'] : 50,
+            $id,
+        ]);
     }
 
     public function hapus(int $id): bool {
@@ -38,5 +55,13 @@ class Kelas {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM siswa WHERE kelas_id=? AND aktif=1");
         $stmt->execute([$kelasId]);
         return (int) $stmt->fetchColumn();
+    }
+
+    // Ambil koordinat kelas untuk validasi geofencing
+    public function ambilKoordinat(int $kelasId): ?array {
+        $stmt = $this->db->prepare("SELECT latitude, longitude, radius FROM kelas WHERE id=? LIMIT 1");
+        $stmt->execute([$kelasId]);
+        $data = $stmt->fetch();
+        return $data ?: null;
     }
 }

@@ -5,7 +5,7 @@ Port    : 5000
 """
 
 from flask import Flask, request, jsonify
-from kenali_wajah import kenali, reload_model
+from kenali_wajah import cek_model, kenali, reload_model
 
 app = Flask(__name__)
 
@@ -39,12 +39,12 @@ def endpoint_reload_model():
 @app.route('/status', methods=['GET'])
 def endpoint_status():
     """Health check sederhana."""
-    from pathlib import Path
-    model_ada = Path(__file__).parent.joinpath('model_absensi.h5').exists()
+    status_model = cek_model()
     return jsonify({
         'status'   : 'aktif',
-        'model_ada': model_ada,
-        'pesan'    : 'CNN service berjalan.' + ('' if model_ada else ' Model belum ada.'),
+        'model_ada': status_model['model_ada'],
+        'model_siap': status_model['model_siap'],
+        'pesan'    : status_model['pesan'],
     })
 
 

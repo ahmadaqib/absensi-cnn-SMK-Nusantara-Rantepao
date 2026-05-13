@@ -8,5 +8,7 @@ __pycache__/
 python/model_absensi.h5
 python/label_map.json
 python/training_status.json
+rpa/log/*.log
+rpa/laporan/
 python/dataset
 AGENTS.md
