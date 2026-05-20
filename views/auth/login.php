@@ -83,8 +83,61 @@
                 Masuk
             </button>
         </form>
+
+        <?php if (!empty($akunDemo)): ?>
+        <div class="mt-6 pt-5 border-t border-slate-200">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div>
+                    <p class="text-sm font-semibold text-slate-900">Akun demo</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Klik akun untuk mengisi form otomatis.</p>
+                </div>
+                <span class="shrink-0 px-2 py-1 rounded-md bg-blue-50 text-[11px] font-semibold text-[#1E40AF] border border-blue-100">
+                    Seeder
+                </span>
+            </div>
+
+            <div class="grid gap-2">
+                <?php foreach ($akunDemo as $akun): ?>
+                <button
+                    type="button"
+                    data-demo-username="<?= htmlspecialchars($akun['username']) ?>"
+                    data-demo-password="<?= htmlspecialchars($akun['password']) ?>"
+                    class="demo-account w-full text-left px-3 py-2.5 rounded-md border border-slate-200
+                           hover:border-[#1E40AF] hover:bg-blue-50 focus:outline-none focus:ring-2
+                           focus:ring-blue-200 transition-colors">
+                    <span class="flex items-center justify-between gap-3">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-slate-900 truncate">
+                                <?= htmlspecialchars($akun['nama']) ?>
+                            </span>
+                            <span class="block text-xs text-slate-500 truncate">
+                                <?= htmlspecialchars($akun['username']) ?> / <?= htmlspecialchars($akun['password']) ?>
+                            </span>
+                        </span>
+                        <span class="shrink-0 text-[11px] font-semibold text-slate-600 bg-slate-100 rounded px-2 py-1">
+                            <?= htmlspecialchars($akun['role']) ?>
+                        </span>
+                    </span>
+                </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('.demo-account').forEach((button) => {
+    button.addEventListener('click', () => {
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+
+        usernameInput.value = button.dataset.demoUsername || '';
+        passwordInput.value = button.dataset.demoPassword || '';
+        passwordInput.focus();
+    });
+});
+</script>
 
 </body>
 </html>

@@ -18,6 +18,7 @@ class AuthController {
         $judulHalaman = 'Masuk';
         $inputUsername = '';
         $kesalahan = '';
+        $akunDemo = $this->ambilAkunDemo();
         require_once BASE_PATH . '/views/auth/login.php';
     }
 
@@ -33,6 +34,7 @@ class AuthController {
             $judulHalaman = 'Masuk';
             $inputUsername = htmlspecialchars($username);
             $kesalahan = 'Username dan password wajib diisi.';
+            $akunDemo = $this->ambilAkunDemo();
             require_once BASE_PATH . '/views/auth/login.php';
             return;
         }
@@ -43,6 +45,7 @@ class AuthController {
             $judulHalaman = 'Masuk';
             $inputUsername = htmlspecialchars($username);
             $kesalahan = 'Username atau password salah.';
+            $akunDemo = $this->ambilAkunDemo();
             require_once BASE_PATH . '/views/auth/login.php';
             return;
         }
@@ -54,5 +57,14 @@ class AuthController {
     public function logout(): void {
         Auth::hapusSesi();
         Response::redirect('login');
+    }
+
+    private function ambilAkunDemo(): array {
+        return [
+            ['nama' => 'Administrator', 'username' => 'admin', 'password' => 'password', 'role' => 'Admin'],
+            ['nama' => 'Budi Santoso', 'username' => 'budi', 'password' => 'password', 'role' => 'Guru'],
+            ['nama' => 'Sari Dewi', 'username' => 'sari', 'password' => 'password', 'role' => 'Guru'],
+            ['nama' => 'Kepala Sekolah', 'username' => 'kepsek', 'password' => 'password', 'role' => 'Kepala Sekolah'],
+        ];
     }
 }

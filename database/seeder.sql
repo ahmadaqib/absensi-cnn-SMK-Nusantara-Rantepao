@@ -1,6 +1,6 @@
 USE sistem_absensi;
 
--- Pengguna (password: "admin123" — bcrypt hash)
+-- Pengguna (password: "password" — bcrypt hash)
 INSERT INTO pengguna (nama, username, password, role) VALUES
 ('Administrator',    'admin',   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
 ('Budi Santoso',     'budi',    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'guru'),
