@@ -4,7 +4,7 @@ $appPath  = parse_url(APP_URL, PHP_URL_PATH) ?? '';
 $uriAktif = '/' . trim(str_replace($appPath, '', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/'), '/');
 
 function itemNav(string $href, string $label, string $uriAktif, string $ikon): void {
-    $harusEksak = in_array($href, ['/dashboard', '/logout', '/absensi'], true);
+    $harusEksak = in_array($href, ['/dashboard', '/logout', '/absensi', '/absensi-guru'], true);
     $aktif = $harusEksak ? $uriAktif === $href : str_starts_with($uriAktif, $href);
     $kelas = $aktif
         ? 'bg-blue-50 text-primer font-semibold'
@@ -57,6 +57,14 @@ $ikonKeluar    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
         <?php if (in_array($role, ['admin', 'guru'])): ?>
             <?php itemNav('/absensi', 'Absensi Kamera', $uriAktif, $ikonAbsensi); ?>
             <?php itemNav('/absensi/rekap', 'Rekap Absensi', $uriAktif, $ikonAbsensi); ?>
+        <?php endif; ?>
+
+        <?php if ($role === 'guru'): ?>
+            <?php itemNav('/absensi-guru', 'Absensi Guru', $uriAktif, $ikonAbsensi); ?>
+        <?php endif; ?>
+
+        <?php if (in_array($role, ['admin', 'guru', 'kepala_sekolah'])): ?>
+            <?php itemNav('/absensi-guru/rekap', 'Rekap Guru', $uriAktif, $ikonAbsensi); ?>
         <?php endif; ?>
 
         <?php if (in_array($role, ['admin', 'guru', 'kepala_sekolah'])): ?>

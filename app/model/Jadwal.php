@@ -41,6 +41,19 @@ class Jadwal {
         return $stmt->fetchAll();
     }
 
+    public function ambilHariIniGuru(int $guruId): array {
+        $hari = $this->namaHariIndonesia();
+        $stmt = $this->db->prepare(
+            "SELECT j.*, k.nama AS nama_kelas, k.latitude, k.longitude, k.radius
+             FROM jadwal j
+             JOIN kelas k ON j.kelas_id = k.id
+             WHERE j.guru_id = ? AND j.hari = ?
+             ORDER BY j.jam_mulai"
+        );
+        $stmt->execute([$guruId, $hari]);
+        return $stmt->fetchAll();
+    }
+
     public function cariById(int $id): ?array {
         $stmt = $this->db->prepare("SELECT * FROM jadwal WHERE id=? LIMIT 1");
         $stmt->execute([$id]);

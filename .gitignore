@@ -2,6 +2,8 @@ CLAUDE.md
 PRD_Sistem_Absensi_CNN.md
 PRD_Sistem_Absensi_CNN_v2.md
 RESUME.md
+config/app.php
+config/database.php
 __pycache__/
 *.py[cod]
 .venv/
