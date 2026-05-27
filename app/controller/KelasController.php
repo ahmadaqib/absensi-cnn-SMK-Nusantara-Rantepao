@@ -3,15 +3,19 @@
 class KelasController {
 
     private Kelas $kelasModel;
+    private Pengaturan $pengaturanModel;
 
     public function __construct() {
         Auth::cekRole(['admin']);
-        $this->kelasModel = new Kelas();
+        $this->kelasModel      = new Kelas();
+        $this->pengaturanModel = new Pengaturan();
     }
 
     public function index(): void {
-        $daftarKelas  = $this->kelasModel->ambilSemua();
-        $judulHalaman = 'Kelola Kelas';
+        $daftarKelas       = $this->kelasModel->ambilSemua();
+        $koordinatSekolah  = $this->pengaturanModel->koordinatSekolah();
+        $sekolahAdaGps     = $koordinatSekolah['latitude'] !== '' && $koordinatSekolah['longitude'] !== '';
+        $judulHalaman      = 'Kelola Kelas';
 
         require_once BASE_PATH . '/views/layouts/header.php';
         require_once BASE_PATH . '/views/layouts/sidebar.php';
@@ -23,6 +27,7 @@ class KelasController {
         $id        = (int) ($_POST['id'] ?? 0);
         $nama      = trim($_POST['nama'] ?? '');
         $tahun     = trim($_POST['tahun'] ?? '');
+        $sumber    = trim($_POST['sumber_koordinat'] ?? 'sekolah');
         $latitude  = trim($_POST['latitude'] ?? '');
         $longitude = trim($_POST['longitude'] ?? '');
         $radius    = trim($_POST['radius'] ?? '50');
@@ -38,6 +43,22 @@ class KelasController {
             return;
         }
 
+        if (!in_array($sumber, ['sekolah', 'kelas'], true)) {
+            Response::redirectDenganPesan('kelas', 'gagal', 'Pilihan sumber koordinat tidak valid.');
+            return;
+        }
+
+        if ($sumber === 'kelas' && ($latitude === '' || $longitude === '')) {
+            Response::redirectDenganPesan('kelas', 'gagal', 'Koordinat kelas wajib diisi jika memilih koordinat sendiri.');
+            return;
+        }
+
+        if ($sumber === 'sekolah') {
+            $latitude = '';
+            $longitude = '';
+            $radius = '';
+        }
+
         if (($latitude !== '' && ((float) $latitude < -90 || (float) $latitude > 90))
             || ($longitude !== '' && ((float) $longitude < -180 || (float) $longitude > 180))) {
             Response::redirectDenganPesan('kelas', 'gagal', 'Koordinat latitude/longitude tidak valid.');
@@ -49,7 +70,7 @@ class KelasController {
             return;
         }
 
-        if ((int) $radius < 10 || (int) $radius > 500) {
+        if ($sumber === 'kelas' && ((int) $radius < 10 || (int) $radius > 500)) {
             Response::redirectDenganPesan('kelas', 'gagal', 'Radius harus di antara 10 sampai 500 meter.');
             return;
         }
@@ -57,9 +78,10 @@ class KelasController {
         $payload = [
             'nama'      => $nama,
             'tahun'     => $tahun,
+            'sumber_koordinat' => $sumber,
             'latitude'  => $latitude,
             'longitude' => $longitude,
-            'radius'    => $radius ?: 50,
+            'radius'    => $sumber === 'kelas' ? ($radius ?: 50) : '',
         ];
 
         if ($id > 0) {

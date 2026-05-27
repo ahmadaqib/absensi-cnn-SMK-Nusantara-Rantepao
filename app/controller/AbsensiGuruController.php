@@ -21,6 +21,14 @@ class AbsensiGuruController {
         Auth::cekRole(['guru']);
         $guruId          = Auth::idSaatIni() ?? 0;
         $jadwalHariIni   = $this->jadwalModel->ambilHariIniGuru($guruId);
+        foreach ($jadwalHariIni as &$jadwal) {
+            $koordinat = $this->kelasModel->ambilKoordinat((int) $jadwal['kelas_id']);
+            $jadwal['sumber_koordinat'] = $koordinat['sumber'] ?? 'kelas';
+            $jadwal['latitude'] = $koordinat['latitude'] ?? null;
+            $jadwal['longitude'] = $koordinat['longitude'] ?? null;
+            $jadwal['radius'] = $koordinat['radius'] ?? null;
+        }
+        unset($jadwal);
         $absensiHariIni  = $this->absensiGuruModel->ambilHariIniGuru($guruId);
         $judulHalaman    = 'Absensi Guru';
 
@@ -103,11 +111,12 @@ class AbsensiGuruController {
                 (float) $koordinat['longitude']
             );
             $radiusMaks = (int) ($koordinat['radius'] ?? RADIUS_MAKSIMAL);
+            $labelArea  = ($koordinat['sumber'] ?? 'kelas') === 'sekolah' ? 'sekolah' : 'kelas';
 
             if ($jarak > $radiusMaks) {
                 Response::json([
                     'status' => 'gagal',
-                    'pesan'  => sprintf('Di luar area kelas (%.0f m dari kelas, maks %d m).', $jarak, $radiusMaks)
+                    'pesan'  => sprintf('Di luar area %s (%.0f m dari titik %s, maks %d m).', $labelArea, $jarak, $labelArea, $radiusMaks)
                 ]);
                 return;
             }

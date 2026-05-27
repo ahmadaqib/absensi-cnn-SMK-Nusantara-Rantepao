@@ -38,7 +38,36 @@
     }
 </style>
 
+<?php
+$latSekolah = $koordinatSekolah['latitude'] ?? '';
+$lngSekolah = $koordinatSekolah['longitude'] ?? '';
+$radiusSekolah = (int) ($koordinatSekolah['radius'] ?? RADIUS_MAKSIMAL);
+?>
+
 <div class="space-y-6">
+    <section class="bg-white rounded-lg border border-slate-200 p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+            <p class="text-xs font-semibold text-[#1E40AF] uppercase tracking-wide">Koordinat Sekolah</p>
+            <h2 class="text-lg font-semibold text-slate-900 mt-1">
+                <?= $sekolahAdaGps ? 'Titik sekolah sudah aktif' : 'Titik sekolah belum diatur' ?>
+            </h2>
+            <p class="text-sm text-slate-500 mt-1">
+                Kelas bisa mengikuti koordinat sekolah, atau memakai titik koordinat sendiri jika ruang kelas perlu radius berbeda.
+            </p>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div class="<?= $sekolahAdaGps ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200' ?> border rounded-md px-3 py-2 text-sm">
+                <?= $sekolahAdaGps
+                    ? htmlspecialchars($latSekolah) . ', ' . htmlspecialchars($lngSekolah) . ' · ' . $radiusSekolah . 'm'
+                    : 'Isi di menu Pengaturan sebelum memilih mode sekolah.' ?>
+            </div>
+            <a href="<?= APP_URL ?>/pengaturan"
+               class="h-10 inline-flex items-center justify-center px-4 text-sm font-semibold text-[#1E40AF] border border-blue-200 rounded-md hover:bg-blue-50 transition-colors">
+                Atur Titik Sekolah
+            </a>
+        </div>
+    </section>
+
     <section class="bg-white rounded-lg border border-slate-200 overflow-hidden">
         <form method="POST" action="<?= APP_URL ?>/kelas/simpan" id="formKelas">
             <input type="hidden" name="id" id="inputId" value="">
@@ -70,10 +99,32 @@
                         <div>
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Geofencing</p>
                             <p id="infoMapKelas" class="text-xs text-slate-400 mt-1">
-                                Klik peta, geser pin, atau gunakan lokasi saat ini.
+                                Pilih sumber koordinat untuk validasi lokasi absensi kelas ini.
                             </p>
                         </div>
 
+                        <div class="grid grid-cols-1 gap-2">
+                            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50">
+                                <input type="radio" name="sumber_koordinat" value="sekolah" class="mt-1" checked>
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-800">Ikuti koordinat sekolah</span>
+                                    <span class="block text-xs text-slate-500 mt-0.5">
+                                        Gunakan titik dan radius dari menu Pengaturan.
+                                    </span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50">
+                                <input type="radio" name="sumber_koordinat" value="kelas" class="mt-1">
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-800">Tentukan koordinat sendiri</span>
+                                    <span class="block text-xs text-slate-500 mt-0.5">
+                                        Pakai titik khusus untuk ruang kelas ini.
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div id="panelKoordinatKelas" class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
                             <div>
                                 <label for="latitude" class="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
@@ -117,6 +168,7 @@
                                 Kosongkan GPS
                             </button>
                         </div>
+                        </div>
                     </div>
 
                     <div class="flex gap-2 pt-1">
@@ -135,7 +187,7 @@
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h3 class="text-base font-semibold text-slate-900">Peta Radius Kelas</h3>
-                            <p class="text-sm text-slate-500">Pin biru adalah titik ruang kelas. Area biru adalah radius absensi.</p>
+                            <p id="teksBantuanPeta" class="text-sm text-slate-500">Pin biru adalah titik ruang kelas. Area biru adalah radius absensi.</p>
                         </div>
                         <div id="statusGpsKelas" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
                             <span class="w-2 h-2 rounded-full bg-slate-300"></span>
@@ -196,7 +248,9 @@
                     $kelasModel = new Kelas();
                     foreach ($daftarKelas as $i => $k):
                         $jumlahSiswa = $kelasModel->jumlahSiswa($k['id']);
-                        $adaGps = !empty($k['latitude']) && !empty($k['longitude']);
+                        $sumberKoordinat = $k['sumber_koordinat'] ?? ((!empty($k['latitude']) && !empty($k['longitude'])) ? 'kelas' : 'sekolah');
+                        $koordinatEfektif = $kelasModel->ambilKoordinat((int) $k['id']);
+                        $adaGps = $koordinatEfektif && !empty($koordinatEfektif['latitude']) && !empty($koordinatEfektif['longitude']);
                     ?>
                     <tr class="border-b border-slate-100 <?= $i % 2 !== 0 ? 'bg-slate-50/50' : '' ?> hover:bg-blue-50/40 transition-colors">
                         <td class="px-4 py-3 font-medium text-slate-900"><?= htmlspecialchars($k['nama']) ?></td>
@@ -206,10 +260,12 @@
                             <?php if ($adaGps): ?>
                             <span class="inline-flex items-center gap-1 text-xs text-green-700">
                                 <span class="w-2 h-2 rounded-full bg-green-400"></span>
-                                <?= number_format((float)$k['radius'], 0) ?>m
+                                <?= $sumberKoordinat === 'sekolah' ? 'Sekolah' : 'Kelas' ?> · <?= number_format((float)($koordinatEfektif['radius'] ?? RADIUS_MAKSIMAL), 0) ?>m
                             </span>
                             <?php else: ?>
-                            <span class="text-xs text-slate-300">—</span>
+                            <span class="text-xs text-amber-600">
+                                <?= $sumberKoordinat === 'sekolah' ? 'Sekolah belum diatur' : 'GPS belum diatur' ?>
+                            </span>
                             <?php endif; ?>
                         </td>
                         <td class="px-4 py-3 text-right">
@@ -217,6 +273,7 @@
                                         <?= $k['id'] ?>,
                                         '<?= htmlspecialchars($k['nama'], ENT_QUOTES) ?>',
                                         '<?= htmlspecialchars($k['tahun'], ENT_QUOTES) ?>',
+                                        '<?= htmlspecialchars($sumberKoordinat, ENT_QUOTES) ?>',
                                         '<?= htmlspecialchars($k['latitude'] ?? '', ENT_QUOTES) ?>',
                                         '<?= htmlspecialchars($k['longitude'] ?? '', ENT_QUOTES) ?>',
                                         '<?= (int)($k['radius'] ?? 50) ?>'
@@ -246,6 +303,9 @@
 <script>
 const DEFAULT_LAT = -3.948250;
 const DEFAULT_LNG = 119.899870;
+const SEKOLAH_LAT = <?= $latSekolah !== '' ? json_encode((float) $latSekolah) : 'null' ?>;
+const SEKOLAH_LNG = <?= $lngSekolah !== '' ? json_encode((float) $lngSekolah) : 'null' ?>;
+const SEKOLAH_RADIUS = <?= json_encode($radiusSekolah) ?>;
 
 let mapKelas;
 let markerKelas = null;
@@ -253,7 +313,26 @@ let circleRadius = null;
 let labelRadius = null;
 let markerIconKelas = null;
 
+function sumberKoordinat() {
+    const checked = document.querySelector('input[name="sumber_koordinat"]:checked');
+    return checked ? checked.value : 'sekolah';
+}
+
+function setSumberKoordinat(sumber) {
+    const radio = document.querySelector(`input[name="sumber_koordinat"][value="${sumber}"]`);
+    if (radio) radio.checked = true;
+    updateModeKoordinat();
+}
+
 function nilaiKoordinat() {
+    if (sumberKoordinat() === 'sekolah') {
+        return {
+            lat: Number.isFinite(SEKOLAH_LAT) ? SEKOLAH_LAT : null,
+            lng: Number.isFinite(SEKOLAH_LNG) ? SEKOLAH_LNG : null,
+            radius: clampRadius(SEKOLAH_RADIUS),
+        };
+    }
+
     const lat = parseFloat(document.getElementById('latitude').value);
     const lng = parseFloat(document.getElementById('longitude').value);
     const radius = clampRadius(document.getElementById('radius').value || '50');
@@ -305,6 +384,7 @@ function updateMapKelas(zoom = false) {
         markerKelas = L.marker(posisi, { draggable: true, icon: markerIconKelas }).addTo(mapKelas);
         markerKelas.on('dragend', () => {
             const pos = markerKelas.getLatLng();
+            if (sumberKoordinat() === 'sekolah') setSumberKoordinat('kelas');
             setKoordinat(pos.lat, pos.lng, null, false);
         });
     } else {
@@ -339,13 +419,14 @@ function updatePreviewKoordinat(nilai) {
 
 function updateStatusGpsKelas(nilai) {
     const status = document.getElementById('statusGpsKelas');
+    const sumber = sumberKoordinat();
     if (nilai.lat === null || nilai.lng === null) {
         status.className = 'inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500';
-        status.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-300"></span>GPS belum diatur';
+        status.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-300"></span>${sumber === 'sekolah' ? 'GPS sekolah belum diatur' : 'GPS kelas belum diatur'}`;
         return;
     }
     status.className = 'inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700';
-    status.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span>GPS aktif';
+    status.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span>${sumber === 'sekolah' ? 'GPS sekolah aktif' : 'GPS kelas aktif'}`;
 }
 
 function updateLabelRadius(nilai) {
@@ -390,15 +471,41 @@ function initMapKelas() {
         attribution: '&copy; OpenStreetMap',
     }).addTo(mapKelas);
 
-    mapKelas.on('click', (event) => setKoordinat(event.latlng.lat, event.latlng.lng));
+    mapKelas.on('click', (event) => {
+        if (sumberKoordinat() === 'sekolah') setSumberKoordinat('kelas');
+        setKoordinat(event.latlng.lat, event.latlng.lng);
+    });
     updateMapKelas(false);
     setTimeout(() => mapKelas.invalidateSize(), 150);
 }
 
-function isiFormEdit(id, nama, tahun, latitude, longitude, radius) {
+function updateModeKoordinat() {
+    const sumber = sumberKoordinat();
+    const panel = document.getElementById('panelKoordinatKelas');
+    const bantuan = document.getElementById('teksBantuanPeta');
+    const info = document.getElementById('infoMapKelas');
+    const modeKelas = sumber === 'kelas';
+
+    panel.classList.toggle('hidden', !modeKelas);
+    document.getElementById('latitude').required = modeKelas;
+    document.getElementById('longitude').required = modeKelas;
+    document.getElementById('radius').required = modeKelas;
+
+    bantuan.textContent = modeKelas
+        ? 'Pin biru adalah titik ruang kelas. Area biru adalah radius absensi kelas.'
+        : 'Peta menampilkan titik sekolah. Klik peta jika kelas ini perlu titik sendiri.';
+    info.textContent = modeKelas
+        ? 'Klik peta, geser pin, atau gunakan lokasi saat ini.'
+        : 'Kelas ini mengikuti koordinat sekolah dari menu Pengaturan.';
+
+    updateMapKelas(false);
+}
+
+function isiFormEdit(id, nama, tahun, sumber, latitude, longitude, radius) {
     document.getElementById('inputId').value    = id;
     document.getElementById('nama').value       = nama;
     document.getElementById('tahun').value      = tahun;
+    setSumberKoordinat(sumber || (latitude && longitude ? 'kelas' : 'sekolah'));
     document.getElementById('latitude').value   = latitude;
     document.getElementById('longitude').value  = longitude;
     setRadiusValue(radius || 50);
@@ -411,6 +518,7 @@ function resetForm() {
     document.getElementById('inputId').value = '';
     document.getElementById('judulForm').textContent = 'Tambah Kelas';
     setRadiusValue(50);
+    setSumberKoordinat('sekolah');
     updateMapKelas(false);
 }
 
@@ -428,6 +536,9 @@ document.getElementById('radiusRange').addEventListener('input', (event) => {
     setRadiusValue(event.target.value);
     updateMapKelas(false);
 });
+document.querySelectorAll('input[name="sumber_koordinat"]').forEach((radio) => {
+    radio.addEventListener('change', updateModeKoordinat);
+});
 
 document.getElementById('btnLokasiSaatIni').addEventListener('click', () => {
     const info = document.getElementById('infoMapKelas');
@@ -438,6 +549,7 @@ document.getElementById('btnLokasiSaatIni').addEventListener('click', () => {
     info.textContent = 'Mengambil lokasi saat ini...';
     navigator.geolocation.getCurrentPosition(
         (pos) => {
+            setSumberKoordinat('kelas');
             setKoordinat(pos.coords.latitude, pos.coords.longitude);
             info.textContent = `Lokasi saat ini dipakai. Akurasi GPS sekitar ${Math.round(pos.coords.accuracy)} meter.`;
         },
@@ -457,4 +569,5 @@ document.getElementById('btnResetKoordinat').addEventListener('click', () => {
 });
 
 initMapKelas();
+updateModeKoordinat();
 </script>

@@ -130,11 +130,12 @@ class AbsensiController {
                 (float) $koordinat['longitude']
             );
             $radiusMaks = $koordinat['radius'] ?? RADIUS_MAKSIMAL;
+            $labelArea  = ($koordinat['sumber'] ?? 'kelas') === 'sekolah' ? 'sekolah' : 'kelas';
 
             if ($jarak > $radiusMaks) {
                 Response::json([
                     'status' => 'error_gps',
-                    'pesan'  => sprintf('Di luar area kelas (%.0f m dari kelas, maks %d m).', $jarak, $radiusMaks),
+                    'pesan'  => sprintf('Di luar area %s (%.0f m dari titik %s, maks %d m).', $labelArea, $jarak, $labelArea, $radiusMaks),
                     'jarak'  => round($jarak),
                 ]);
                 return;

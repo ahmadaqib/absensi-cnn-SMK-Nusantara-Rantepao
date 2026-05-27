@@ -117,7 +117,7 @@
         <p id="pesanGps" class="text-sm text-slate-500">
             <?= $kelasAdaGps
                 ? 'Memverifikasi lokasi GPS...'
-                : 'Kelas ini belum memiliki koordinat GPS — geofencing tidak aktif.' ?>
+                : 'Koordinat GPS untuk kelas/sekolah ini belum aktif — geofencing tidak aktif.' ?>
         </p>
     </div>
 

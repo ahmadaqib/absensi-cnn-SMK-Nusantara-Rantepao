@@ -73,7 +73,7 @@
                     <div class="panduan-step" data-step="1">
                         <h4 class="text-sm font-semibold text-slate-900">Siapkan data dasar</h4>
                         <p class="text-sm text-slate-600 mt-1 leading-6">
-                            Buka <b>Kelola Kelas</b>, isi nama kelas, tahun, koordinat latitude, longitude, dan radius. Koordinat dipakai untuk memastikan absensi dilakukan di area kelas.
+                            Buka <b>Pengaturan</b> untuk mengisi titik koordinat sekolah. Lalu buka <b>Kelola Kelas</b>, isi nama kelas, tahun, dan pilih apakah kelas mengikuti koordinat sekolah atau memakai koordinat sendiri.
                             Setelah itu buka <b>Jadwal</b> dan buat jadwal mengajar sesuai kelas, guru, mata pelajaran, hari, jam mulai, dan jam selesai.
                         </p>
                     </div>
@@ -125,7 +125,7 @@
                     <div class="space-y-2.5">
                         <label class="panduan-check flex items-start gap-2 text-sm text-slate-600">
                             <input type="checkbox" class="mt-1 rounded border-slate-300">
-                            <span>Kelas dan radius GPS sudah diisi.</span>
+                            <span>Koordinat sekolah sudah diatur, atau kelas punya koordinat sendiri.</span>
                         </label>
                         <label class="panduan-check flex items-start gap-2 text-sm text-slate-600">
                             <input type="checkbox" class="mt-1 rounded border-slate-300">
@@ -170,9 +170,10 @@
                 <ul class="text-sm text-slate-600 mt-4 space-y-2 leading-6">
                     <li><b>Dashboard:</b> melihat ringkasan kehadiran hari ini.</li>
                     <li><b>Kelola Siswa:</b> tambah, ubah, hapus, dan ambil dataset wajah siswa.</li>
-                    <li><b>Kelola Kelas:</b> mengatur kelas, tahun, koordinat GPS, dan radius.</li>
+                    <li><b>Kelola Kelas:</b> mengatur kelas, tahun, serta sumber koordinat GPS.</li>
                     <li><b>Jadwal:</b> mengatur mata pelajaran, guru, hari, dan jam belajar.</li>
                     <li><b>Training CNN:</b> melatih ulang model dari dataset terbaru.</li>
+                    <li><b>Pengaturan:</b> mengatur titik koordinat sekolah untuk geofencing.</li>
                     <li><b>Absensi Kamera:</b> menjalankan kamera absensi siswa.</li>
                     <li><b>Rekap, Rekap Guru, Laporan:</b> memantau dan mengekspor data.</li>
                     <li><b>RPA Bot:</b> melihat status bot dan menjalankan proses manual.</li>
@@ -304,7 +305,7 @@
                 <summary class="cursor-pointer text-sm font-bold text-slate-900">Absensi ditolak karena GPS</summary>
                 <p class="text-sm text-slate-600 mt-3 leading-6">
                     Pastikan browser mengizinkan lokasi, perangkat berada di area kelas, dan koordinat kelas sudah benar. Jika radius terlalu kecil untuk kondisi lapangan,
-                    admin dapat menyesuaikan radius pada menu <b>Kelola Kelas</b>.
+                    admin dapat menyesuaikan radius di <b>Pengaturan</b> untuk mode sekolah, atau di <b>Kelola Kelas</b> untuk mode koordinat sendiri.
                 </p>
             </details>
             <details class="panduan-detail p-5">

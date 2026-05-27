@@ -17,14 +17,22 @@ CREATE TABLE pengguna (
     dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Pengaturan sistem, termasuk titik koordinat sekolah
+CREATE TABLE pengaturan (
+    kunci           VARCHAR(100) PRIMARY KEY,
+    nilai           TEXT NULL,
+    diperbarui_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Tabel kelas (+ koordinat GPS untuk geofencing)
 CREATE TABLE kelas (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     nama      VARCHAR(20)    NOT NULL,
     tahun     VARCHAR(9)     NOT NULL,
-    latitude  DECIMAL(10, 8) NULL    COMMENT 'Koordinat latitude ruang kelas',
-    longitude DECIMAL(11, 8) NULL    COMMENT 'Koordinat longitude ruang kelas',
-    radius    INT DEFAULT 50         COMMENT 'Radius geofencing dalam meter',
+    sumber_koordinat ENUM('sekolah','kelas') NOT NULL DEFAULT 'sekolah',
+    latitude  DECIMAL(10, 8) NULL    COMMENT 'Koordinat latitude ruang kelas jika sumber_koordinat=kelas',
+    longitude DECIMAL(11, 8) NULL    COMMENT 'Koordinat longitude ruang kelas jika sumber_koordinat=kelas',
+    radius    INT DEFAULT NULL       COMMENT 'Radius geofencing kelas jika sumber_koordinat=kelas',
     UNIQUE KEY uq_kelas (nama, tahun)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

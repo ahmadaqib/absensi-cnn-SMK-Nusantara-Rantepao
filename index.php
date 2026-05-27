@@ -7,7 +7,7 @@ require_once __DIR__ . '/config/database.php';
 foreach (['Auth', 'Response', 'Validator', 'XlsxWriter'] as $helper) {
     require_once __DIR__ . "/app/helper/$helper.php";
 }
-foreach (['Pengguna', 'Siswa', 'Kelas', 'Jadwal', 'Absensi', 'AbsensiGuru', 'Notifikasi'] as $model) {
+foreach (['Pengaturan', 'Pengguna', 'Siswa', 'Kelas', 'Jadwal', 'Absensi', 'AbsensiGuru', 'Notifikasi'] as $model) {
     $file = __DIR__ . "/app/model/$model.php";
     if (file_exists($file)) require_once $file;
 }
@@ -33,6 +33,8 @@ $rute = [
 
     ['GET',  '/dashboard',          'DashboardController', 'index'],
     ['GET',  '/panduan',            'PanduanController',   'index'],
+    ['GET',  '/pengaturan',         'PengaturanController','index'],
+    ['POST', '/pengaturan/sekolah', 'PengaturanController','simpanSekolah'],
 
     ['GET',  '/siswa',              'SiswaController',     'index'],
     ['GET',  '/siswa/tambah',       'SiswaController',     'formTambah'],

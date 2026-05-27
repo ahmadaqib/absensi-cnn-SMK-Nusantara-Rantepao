@@ -52,12 +52,13 @@ $labelStatus = [
                     <?php
                     $absen = $absenByJadwal[(int) $jadwal['id']] ?? null;
                     $kelasAdaGps = !empty($jadwal['latitude']) && !empty($jadwal['longitude']);
+                    $labelGps = ($jadwal['sumber_koordinat'] ?? 'kelas') === 'sekolah' ? 'GPS sekolah' : 'GPS kelas';
                     ?>
                     <tr class="border-b border-slate-100 <?= $i % 2 !== 0 ? 'bg-slate-50/50' : '' ?>">
                         <td class="px-4 py-3">
                             <p class="font-medium text-slate-900"><?= htmlspecialchars($jadwal['nama_kelas']) ?></p>
                             <p class="text-xs text-slate-400">
-                                <?= $kelasAdaGps ? 'GPS aktif, radius ' . (int) $jadwal['radius'] . ' m' : 'GPS kelas belum diatur' ?>
+                                <?= $kelasAdaGps ? $labelGps . ' aktif, radius ' . (int) $jadwal['radius'] . ' m' : $labelGps . ' belum diatur' ?>
                             </p>
                         </td>
                         <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($jadwal['mata_pelajaran']) ?></td>
@@ -303,7 +304,7 @@ $labelStatus = [
     if (adaJadwalPerluGps) {
         ambilLokasi();
     } else {
-        setStatus('GPS kelas belum diatur pada jadwal hari ini, absensi bisa dilakukan tanpa validasi lokasi.');
+        setStatus('GPS belum diatur pada jadwal hari ini, absensi bisa dilakukan tanpa validasi lokasi.');
     }
 })();
 </script>
