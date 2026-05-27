@@ -54,7 +54,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # 1. Jalankan Flask di background
-echo "[1/2] Memulai Python CNN Service di port 5000..."
+echo "[1/2] Memulai Python CNN Service di port 5001..."
 cd "$SCRIPT_DIR/python"
 $PYTHON_CMD app.py &
 FLASK_PID=$!
@@ -62,7 +62,7 @@ cd "$SCRIPT_DIR"
 
 # Tunggu Flask siap dan pastikan endpoint status benar-benar menjawab.
 for i in {1..20}; do
-    if curl -fsS http://127.0.0.1:5000/status >/dev/null 2>&1; then
+    if curl -fsS http://127.0.0.1:5001/status >/dev/null 2>&1; then
         break
     fi
     if ! kill -0 "$FLASK_PID" 2>/dev/null; then
@@ -72,18 +72,18 @@ for i in {1..20}; do
     sleep 1
 done
 
-if ! curl -fsS http://127.0.0.1:5000/status >/dev/null 2>&1; then
-    echo "[ERROR] CNN Service belum menjawab di http://127.0.0.1:5000/status"
+if ! curl -fsS http://127.0.0.1:5001/status >/dev/null 2>&1; then
+    echo "[ERROR] CNN Service belum menjawab di http://127.0.0.1:5001/status"
     exit 1
 fi
 echo "        Flask berjalan (PID: $FLASK_PID)"
 
 # 2. Jalankan PHP built-in server (foreground — blocking)
-echo "[2/2] Memulai Web Server PHP di port 8000..."
+echo "[2/2] Memulai Web Server PHP di port 8001..."
 echo ""
 echo "============================================"
 echo "  Sistem siap!"
-echo "  Buka browser: http://localhost:8000"
+echo "  Buka browser: http://localhost:8001"
 echo ""
 echo "  Login: admin / password"
 echo ""
@@ -91,4 +91,4 @@ echo "  Tekan Ctrl+C untuk menghentikan semua."
 echo "============================================"
 echo ""
 
-php -S localhost:8000 "$SCRIPT_DIR/router.php"
+php -S localhost:8001 "$SCRIPT_DIR/router.php"

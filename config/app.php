@@ -5,8 +5,8 @@ define('APP_NAME', 'Sistem Absensi SMK Nusantara');
 // Auto-detect: php -S (port 8000) vs production VPS / Apache
 define('APP_URL',
     PHP_SAPI === 'cli-server'
-        ? 'http://localhost:8000'
-        : (isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : 'https://risna-skripsi.site')
+        ? 'http://localhost:8001'
+        : (isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : 'https://risna-skripsi.site')
 );
 
 define('BASE_PATH', dirname(__DIR__));
@@ -16,7 +16,7 @@ define('THRESHOLD_CONFIDENCE', 0.85);
 define('THRESHOLD_PERINGATAN', 0.70);
 
 // URL Python CNN service
-define('CNN_SERVICE_URL', 'http://127.0.0.1:5000');
+define('CNN_SERVICE_URL', 'http://127.0.0.1:5001');
 
 // Interpreter Python untuk training dan service.
 // Kosongkan agar sistem otomatis memakai virtualenv lokal jika ada.

@@ -106,6 +106,41 @@ $labelStatus = [
     </div>
 </div>
 
+<!-- Modal Kamera Face Recognition Guru -->
+<div id="modalKameraGuru" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md mx-4 p-5 flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-slate-900 text-sm">Verifikasi Wajah (CNN)</h3>
+            <button type="button" id="btnCloseModalGuru" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="mt-4 relative bg-slate-900 rounded-lg overflow-hidden" style="aspect-ratio:4/3">
+            <video id="videoGuru" autoplay playsinline muted class="w-full h-full object-cover" style="transform:scaleX(-1)"></video>
+            <!-- Guide overlay -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div class="w-32 h-40 rounded-xl" style="border:2px dashed rgba(255,255,255,0.35)"></div>
+            </div>
+        </div>
+
+        <canvas id="canvasGuru" class="hidden"></canvas>
+        <p id="statusCnnGuru" class="text-xs text-center text-slate-500 mt-3">Menyalakan kamera...</p>
+
+        <div class="mt-4 flex gap-2 justify-end">
+            <button type="button" id="btnCancelCaptureGuru" class="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-md hover:bg-slate-50 transition-colors">
+                Batal
+            </button>
+            <button type="button" id="btnCaptureGuru" disabled class="px-4 py-2 text-sm font-semibold text-white bg-[#1E40AF] hover:bg-[#1D4ED8] disabled:bg-slate-300 rounded-md transition-colors">
+                Ambil Foto & Absen
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 (() => {
     const status = document.getElementById('statusLokasiGuru');
@@ -113,6 +148,18 @@ $labelStatus = [
     const forms = Array.from(document.querySelectorAll('.formAbsensiGuru'));
     const adaJadwalPerluGps = forms.some((form) => form.dataset.perluGps === '1');
     let posisi = { lat: null, lon: null, akurasi: null };
+
+    // Modal elements
+    const modal = document.getElementById('modalKameraGuru');
+    const video = document.getElementById('videoGuru');
+    const canvas = document.getElementById('canvasGuru');
+    const btnCapture = document.getElementById('btnCaptureGuru');
+    const btnClose = document.getElementById('btnCloseModalGuru');
+    const btnCancel = document.getElementById('btnCancelCaptureGuru');
+    const statusCnn = document.getElementById('statusCnnGuru');
+
+    let stream = null;
+    let currentForm = null;
 
     const setStatus = (pesan, kelas = 'text-slate-500') => {
         status.className = `text-sm mt-1 ${kelas}`;
@@ -129,9 +176,7 @@ $labelStatus = [
         forms.forEach((form) => {
             form.querySelector('.inputLatitudeGuru').value = posisi.lat;
             form.querySelector('.inputLongitudeGuru').value = posisi.lon;
-            if (form.dataset.perluGps === '1') {
-                form.querySelector('.btnAbsenGuru').disabled = false;
-            }
+            form.querySelector('.btnAbsenGuru').disabled = false;
         });
         setStatus(`GPS aktif (akurasi +/-${Math.round(posisi.akurasi || 0)}m)`, 'text-green-700');
     };
@@ -155,18 +200,102 @@ $labelStatus = [
         );
     };
 
+    const bukaModalKamera = () => {
+        modal.classList.remove('hidden');
+        statusCnn.textContent = 'Menyalakan kamera...';
+        statusCnn.className = 'text-xs text-center text-slate-500 mt-3';
+        btnCapture.disabled = true;
+        btnCapture.textContent = 'Ambil Foto & Absen';
+
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(s => {
+                stream = s;
+                video.srcObject = s;
+                video.onloadedmetadata = () => {
+                    btnCapture.disabled = false;
+                    statusCnn.textContent = 'Kamera siap. Posisikan wajah di dalam bingkai lalu klik "Ambil Foto & Absen".';
+                };
+            })
+            .catch(() => {
+                statusCnn.textContent = 'Gagal mengakses kamera. Harap izinkan akses kamera di browser Anda.';
+                statusCnn.className = 'text-xs text-center text-red-600 mt-3';
+            });
+    };
+
+    const tutupModalKamera = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        video.srcObject = null;
+        modal.classList.add('hidden');
+        currentForm = null;
+    };
+
     forms.forEach((form) => {
         form.addEventListener('submit', (event) => {
-            if (form.dataset.perluGps !== '1') {
-                return;
-            }
-
-            if (!form.querySelector('.btnAbsenGuru').disabled && posisi.lat !== null && posisi.lon !== null) {
-                return;
-            }
-
             event.preventDefault();
-            ambilLokasi();
+
+            if (form.dataset.perluGps === '1' && (posisi.lat === null || posisi.lon === null)) {
+                ambilLokasi();
+                return;
+            }
+
+            currentForm = form;
+            bukaModalKamera();
+        });
+    });
+
+    btnClose.addEventListener('click', tutupModalKamera);
+    btnCancel.addEventListener('click', tutupModalKamera);
+
+    btnCapture.addEventListener('click', () => {
+        if (!currentForm) return;
+
+        btnCapture.disabled = true;
+        btnCapture.textContent = 'Memproses...';
+        statusCnn.textContent = 'Mendeteksi wajah & mencocokkan identitas...';
+        statusCnn.className = 'text-xs text-center text-blue-600 mt-3';
+
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg', 0.85);
+
+        const formData = new FormData();
+        formData.append('jadwal_id', currentForm.querySelector('[name=jadwal_id]').value);
+        formData.append('latitude', currentForm.querySelector('.inputLatitudeGuru').value);
+        formData.append('longitude', currentForm.querySelector('.inputLongitudeGuru').value);
+        formData.append('gambar', base64);
+
+        fetch('<?= APP_URL ?>/absensi-guru/simpan', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'sukses') {
+                statusCnn.textContent = data.pesan || 'Kehadiran berhasil dicatat!';
+                statusCnn.className = 'text-xs text-center text-green-600 mt-3';
+                setTimeout(() => {
+                    tutupModalKamera();
+                    window.location.reload();
+                }, 1500);
+            } else {
+                statusCnn.textContent = data.pesan || 'Verifikasi gagal.';
+                statusCnn.className = 'text-xs text-center text-red-600 mt-3';
+                btnCapture.disabled = false;
+                btnCapture.textContent = 'Ambil Foto & Absen';
+            }
+        })
+        .catch(() => {
+            statusCnn.textContent = 'Error koneksi. Harap ulangi.';
+            statusCnn.className = 'text-xs text-center text-red-600 mt-3';
+            btnCapture.disabled = false;
+            btnCapture.textContent = 'Ambil Foto & Absen';
         });
     });
 

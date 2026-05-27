@@ -12,8 +12,12 @@ function itemNav(string $href, string $label, string $uriAktif, string $ikon): v
     echo "<a href=\"" . APP_URL . $href . "\"
              class=\"flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors $kelas\">
             <span class=\"w-4 h-4 flex-shrink-0\">$ikon</span>
-            $label
+            <span class=\"truncate\">$label</span>
           </a>";
+}
+
+function judulGrupNav(string $label): void {
+    echo "<p class=\"px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 first:pt-0\">$label</p>";
 }
 
 $ikonDashboard = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
@@ -24,11 +28,12 @@ $ikonJadwal    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 $ikonLaporan   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
 $ikonTraining  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
 $ikonRpa       = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="10" rx="2"/><path d="M12 8V4"/><circle cx="8" cy="13" r="1"/><circle cx="16" cy="13" r="1"/><path d="M9 18v2M15 18v2"/></svg>';
+$ikonPanduan   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>';
 $ikonKeluar    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
 ?>
 
 <!-- Sidebar -->
-<aside class="w-60 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-full">
+<aside class="w-64 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-full">
     <!-- Logo -->
     <div class="h-16 flex items-center px-4 border-b border-slate-200">
         <div class="w-8 h-8 bg-primer rounded-lg flex items-center justify-center mr-3">
@@ -43,31 +48,48 @@ $ikonKeluar    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
     </div>
 
     <!-- Menu navigasi -->
-    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+    <nav class="flex-1 overflow-y-auto px-3 py-4">
+        <?php judulGrupNav('Utama'); ?>
         <?php itemNav('/dashboard', 'Dashboard', $uriAktif, $ikonDashboard); ?>
 
         <?php if ($role === 'admin'): ?>
+            <?php judulGrupNav('Data Master'); ?>
             <?php itemNav('/siswa',    'Kelola Siswa',  $uriAktif, $ikonSiswa); ?>
             <?php itemNav('/kelas',    'Kelola Kelas',  $uriAktif, $ikonKelas); ?>
             <?php itemNav('/jadwal',   'Jadwal',        $uriAktif, $ikonJadwal); ?>
+
+            <?php judulGrupNav('Operasional'); ?>
+            <?php itemNav('/absensi', 'Absensi Kamera', $uriAktif, $ikonAbsensi); ?>
+            <?php itemNav('/absensi/rekap', 'Rekap Siswa', $uriAktif, $ikonAbsensi); ?>
+            <?php itemNav('/absensi-guru/rekap', 'Rekap Guru', $uriAktif, $ikonAbsensi); ?>
+            <?php itemNav('/laporan', 'Laporan', $uriAktif, $ikonLaporan); ?>
+
+            <?php judulGrupNav('Sistem'); ?>
             <?php itemNav('/training', 'Training CNN',  $uriAktif, $ikonTraining); ?>
             <?php itemNav('/rpa',      'RPA Bot',       $uriAktif, $ikonRpa); ?>
-        <?php endif; ?>
 
-        <?php if (in_array($role, ['admin', 'guru'])): ?>
-            <?php itemNav('/absensi', 'Absensi Kamera', $uriAktif, $ikonAbsensi); ?>
-            <?php itemNav('/absensi/rekap', 'Rekap Absensi', $uriAktif, $ikonAbsensi); ?>
+            <?php judulGrupNav('Bantuan'); ?>
+            <?php itemNav('/panduan',  'Panduan',       $uriAktif, $ikonPanduan); ?>
         <?php endif; ?>
 
         <?php if ($role === 'guru'): ?>
+            <?php judulGrupNav('Absensi'); ?>
+            <?php itemNav('/absensi', 'Absensi Kamera', $uriAktif, $ikonAbsensi); ?>
             <?php itemNav('/absensi-guru', 'Absensi Guru', $uriAktif, $ikonAbsensi); ?>
-        <?php endif; ?>
 
-        <?php if (in_array($role, ['admin', 'guru', 'kepala_sekolah'])): ?>
+            <?php judulGrupNav('Data Wajah'); ?>
+            <?php itemNav('/absensi-guru/dataset', 'Dataset Wajah', $uriAktif, $ikonTraining); ?>
+
+            <?php judulGrupNav('Rekap & Laporan'); ?>
+            <?php itemNav('/absensi/rekap', 'Rekap Siswa', $uriAktif, $ikonAbsensi); ?>
             <?php itemNav('/absensi-guru/rekap', 'Rekap Guru', $uriAktif, $ikonAbsensi); ?>
+            <?php itemNav('/laporan', 'Laporan', $uriAktif, $ikonLaporan); ?>
         <?php endif; ?>
 
-        <?php if (in_array($role, ['admin', 'guru', 'kepala_sekolah'])): ?>
+        <?php if ($role === 'kepala_sekolah'): ?>
+            <?php judulGrupNav('Monitoring'); ?>
+            <?php itemNav('/absensi/rekap', 'Rekap Siswa', $uriAktif, $ikonAbsensi); ?>
+            <?php itemNav('/absensi-guru/rekap', 'Rekap Guru', $uriAktif, $ikonAbsensi); ?>
             <?php itemNav('/laporan', 'Laporan', $uriAktif, $ikonLaporan); ?>
         <?php endif; ?>
     </nav>

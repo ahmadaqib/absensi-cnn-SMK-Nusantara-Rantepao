@@ -131,7 +131,7 @@
             <div class="bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3 text-xs text-red-800">
                 CNN service tidak aktif. Jalankan <code class="font-mono">python app.py</code>
                 di folder <code class="font-mono">python/</code> terlebih dahulu.
-                Cek juga <code class="font-mono">http://127.0.0.1:5000/status</code>.
+                Cek juga <code class="font-mono">http://127.0.0.1:5001/status</code>.
             </div>
             <?php elseif (!$statusCnn['model_ada']): ?>
             <div class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3 text-xs text-amber-800">

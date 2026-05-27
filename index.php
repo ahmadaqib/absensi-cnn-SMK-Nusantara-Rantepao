@@ -32,6 +32,7 @@ $rute = [
     ['GET',  '/logout',             'AuthController',      'logout'],
 
     ['GET',  '/dashboard',          'DashboardController', 'index'],
+    ['GET',  '/panduan',            'PanduanController',   'index'],
 
     ['GET',  '/siswa',              'SiswaController',     'index'],
     ['GET',  '/siswa/tambah',       'SiswaController',     'formTambah'],
@@ -63,6 +64,9 @@ $rute = [
     ['GET',  '/absensi-guru',        'AbsensiGuruController', 'index'],
     ['POST', '/absensi-guru/simpan', 'AbsensiGuruController', 'simpan'],
     ['GET',  '/absensi-guru/rekap',  'AbsensiGuruController', 'rekap'],
+    ['GET',  '/absensi-guru/dataset',        'AbsensiGuruController', 'dataset'],
+    ['POST', '/absensi-guru/dataset/simpan', 'AbsensiGuruController', 'simpanDataset'],
+    ['POST', '/absensi-guru/dataset/hapus',  'AbsensiGuruController', 'hapusDataset'],
 
     ['GET',  '/laporan',            'LaporanController',   'index'],
     ['GET',  '/laporan/pdf',        'LaporanController',   'exportPdf'],
