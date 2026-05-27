@@ -68,11 +68,52 @@ class JadwalController {
 
     public function hapus(): void {
         $id = (int) ($_POST['id'] ?? 0);
-        if (!$this->jadwalModel->cariById($id)) {
+        $jadwal = $this->jadwalModel->cariById($id);
+        if (!$jadwal) {
             Response::redirectDenganPesan('jadwal', 'gagal', 'Data jadwal tidak ditemukan.');
             return;
         }
-        $this->jadwalModel->hapus($id);
+
+        $db = koneksiDB();
+        
+        // Cek apakah jadwal sudah digunakan untuk absensi final siswa atau guru
+        $stmtAbs = $db->prepare("
+            SELECT (
+                SELECT COUNT(*) FROM absensi WHERE jadwal_id = ?
+            ) + (
+                SELECT COUNT(*) FROM absensi_guru WHERE jadwal_id = ?
+            ) AS total
+        ");
+        $stmtAbs->execute([$id, $id]);
+        if ((int) $stmtAbs->fetchColumn() > 0) {
+            Response::redirectDenganPesan('jadwal', 'gagal', 
+                'Jadwal tidak bisa dihapus karena sudah memiliki rekaman absensi siswa atau guru.');
+            return;
+        }
+
+        try {
+            $db->beginTransaction();
+            
+            // Hapus data antrian presensi rpa terkait
+            $stmtAntrian = $db->prepare("DELETE FROM presensi_antrian WHERE jadwal_id = ?");
+            $stmtAntrian->execute([$id]);
+            
+            // Hapus data notifikasi terkirim terkait
+            $stmtNotif = $db->prepare("DELETE FROM notifikasi_terkirim WHERE jadwal_id = ?");
+            $stmtNotif->execute([$id]);
+
+            // Hapus jadwal
+            $stmtJadwal = $db->prepare("DELETE FROM jadwal WHERE id = ?");
+            $stmtJadwal->execute([$id]);
+
+            $db->commit();
+        } catch (Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
+
         Response::redirectDenganPesan('jadwal', 'sukses', 'Jadwal berhasil dihapus.');
     }
 }

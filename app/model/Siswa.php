@@ -69,8 +69,29 @@ class Siswa {
     }
 
     public function hapus(int $id): bool {
-        $stmt = $this->db->prepare("DELETE FROM siswa WHERE id=?");
-        return $stmt->execute([$id]);
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Hapus data antrian presensi rpa
+            $stmt1 = $this->db->prepare("DELETE FROM presensi_antrian WHERE siswa_id = ?");
+            $stmt1->execute([$id]);
+
+            // 2. Hapus data absensi final
+            $stmt2 = $this->db->prepare("DELETE FROM absensi WHERE siswa_id = ?");
+            $stmt2->execute([$id]);
+
+            // 3. Hapus data siswa
+            $stmt3 = $this->db->prepare("DELETE FROM siswa WHERE id = ?");
+            $res = $stmt3->execute([$id]);
+
+            $this->db->commit();
+            return $res;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 
     public function hitungPerKelas(int $kelasId): int {

@@ -108,6 +108,14 @@ class KelasController {
             return;
         }
 
+        // Cek apakah kelas memiliki jadwal pelajaran aktif
+        $jadwalModel = new Jadwal();
+        if (count($jadwalModel->ambilByKelas($id)) > 0) {
+            Response::redirectDenganPesan('kelas', 'gagal',
+                "Kelas {$kelas['nama']} masih memiliki jadwal pelajaran aktif. Hapus jadwal terlebih dahulu.");
+            return;
+        }
+
         $this->kelasModel->hapus($id);
         Response::redirectDenganPesan('kelas', 'sukses', "Kelas {$kelas['nama']} berhasil dihapus.");
     }
