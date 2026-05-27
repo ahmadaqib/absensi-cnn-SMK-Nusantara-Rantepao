@@ -2,8 +2,8 @@
 
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'sistem_absensi');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_USER', 'risna');
+define('DB_PASS', 'RisnaAbsensi2026');
 define('DB_CHARSET', 'utf8mb4');
 
 function koneksiDB(): PDO {

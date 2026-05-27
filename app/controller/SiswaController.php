@@ -128,6 +128,27 @@ class SiswaController {
             return;
         }
 
+        // Hapus file foto profil jika ada
+        if (!empty($siswa['foto'])) {
+            $pathFoto = BASE_PATH . '/public/' . $siswa['foto'];
+            if (is_file($pathFoto)) {
+                unlink($pathFoto);
+            }
+        }
+
+        // Hapus folder dataset beserta seluruh isinya
+        $dirDataset = BASE_PATH . '/python/dataset/' . $siswa['nis'] . '/';
+        if (is_dir($dirDataset)) {
+            $files = array_diff(scandir($dirDataset), ['.', '..']);
+            foreach ($files as $file) {
+                $filePath = $dirDataset . $file;
+                if (is_file($filePath)) {
+                    unlink($filePath);
+                }
+            }
+            rmdir($dirDataset);
+        }
+
         $this->siswaModel->hapus($id);
         Response::redirectDenganPesan('siswa', 'sukses', "Siswa {$siswa['nama']} berhasil dihapus.");
     }
