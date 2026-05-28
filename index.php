@@ -46,6 +46,10 @@ $rute = [
     ['POST', '/siswa/dataset/simpan',    'SiswaController',     'simpanDataset'],
     ['POST', '/siswa/dataset/hapus',     'SiswaController',     'hapusDataset'],
 
+    ['GET',  '/guru',                    'GuruController',      'index'],
+    ['POST', '/guru/simpan',             'GuruController',      'simpan'],
+    ['POST', '/guru/hapus',              'GuruController',      'hapus'],
+
     ['GET',  '/training',                'TrainingController',  'index'],
     ['POST', '/training/mulai',          'TrainingController',  'mulai'],
     ['GET',  '/training/status',         'TrainingController',  'status'],

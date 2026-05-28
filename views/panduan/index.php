@@ -74,7 +74,7 @@
                         <h4 class="text-sm font-semibold text-slate-900">Siapkan data dasar</h4>
                         <p class="text-sm text-slate-600 mt-1 leading-6">
                             Buka <b>Pengaturan</b> untuk mengisi titik koordinat sekolah. Lalu buka <b>Kelola Kelas</b>, isi nama kelas, tahun, dan pilih apakah kelas mengikuti koordinat sekolah atau memakai koordinat sendiri.
-                            Setelah itu buka <b>Jadwal</b> dan buat jadwal mengajar sesuai kelas, guru, mata pelajaran, hari, jam mulai, dan jam selesai.
+                            Setelah itu buka <b>Kelola Guru</b> untuk membuat akun guru, lalu buka <b>Jadwal</b> dan buat jadwal mengajar sesuai kelas, guru, mata pelajaran, hari, jam mulai, dan jam selesai.
                         </p>
                     </div>
 
@@ -170,6 +170,7 @@
                 <ul class="text-sm text-slate-600 mt-4 space-y-2 leading-6">
                     <li><b>Dashboard:</b> melihat ringkasan kehadiran hari ini.</li>
                     <li><b>Kelola Siswa:</b> tambah, ubah, hapus, dan ambil dataset wajah siswa.</li>
+                    <li><b>Kelola Guru:</b> tambah, ubah, hapus akun guru, serta melihat status dataset wajah guru.</li>
                     <li><b>Kelola Kelas:</b> mengatur kelas, tahun, serta sumber koordinat GPS.</li>
                     <li><b>Jadwal:</b> mengatur mata pelajaran, guru, hari, dan jam belajar.</li>
                     <li><b>Training CNN:</b> melatih ulang model dari dataset terbaru.</li>
